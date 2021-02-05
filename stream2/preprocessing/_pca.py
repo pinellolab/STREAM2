@@ -21,6 +21,22 @@ def pca(adata,
     ----------
     adata: AnnData
         Annotated data matrix.
+    n_components: `int`, optional (default: 50)
+        Desired dimensionality of output data
+    algorithm: `str`, optional (default: 'randomized')
+        SVD solver to use. Choose from {'arpack', 'randomized'}.
+    n_iter: `int`, optional (default: '5')
+        Number of iterations for randomized SVD solver.
+        Not used by ARPACK.
+    tol: `float`, optional (default: 0)
+        Tolerance for ARPACK. 0 means machine precision.
+        Ignored by randomized SVD solver.
+    feature: `str`, optional (default: None)
+        Feature used to perform PCA.
+        The data type of `.var[feature]` needs to be `bool`
+        If None, adata.X will be used.
+    kwargs:
+        Other keyword arguments are passed down to `TruncatedSVD()`
 
     Returns
     -------
@@ -40,7 +56,7 @@ def pca(adata,
         X = adata.X.copy()
     else:
         mask = adata.var[feature]
-        X = adata[:,mask].X.copy()
+        X = adata[:, mask].X.copy()
     svd = TruncatedSVD(n_components=n_components,
                        algorithm=algorithm,
                        n_iter=n_iter,
@@ -50,6 +66,7 @@ def pca(adata,
     svd.fit(X)
     adata.obsm['X_pca'] = svd.transform(X)
     adata.uns['pca'] = dict()
+    adata.uns['pca']['n_pcs'] = n_components
     adata.uns['pca']['PCs'] = svd.components_.T
     adata.uns['pca']['variance'] = svd.explained_variance_
     adata.uns['pca']['variance_ratio'] = svd.explained_variance_ratio_
