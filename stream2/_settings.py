@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib as mpl
 
 
-class stream2Config:
+class Stream2Config:
     """configuration class for STREAM2"""
 
     def __init__(self,
@@ -98,4 +98,4 @@ class stream2Config:
         print('Saving results in: %s' % workdir)
 
 
-settings = stream2Config()
+settings = Stream2Config()
