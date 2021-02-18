@@ -29,7 +29,7 @@ def violin(adata,
            pad=1.08,
            w_pad=None,
            h_pad=3,
-           fig_size=(4, 4),
+           fig_size=(3, 3),
            fig_ncol=3,
            save_fig=False,
            fig_path=None,
@@ -139,7 +139,7 @@ def hist(adata,
          pad=1.08,
          w_pad=None,
          h_pad=3,
-         fig_size=(4, 4),
+         fig_size=(3, 3),
          fig_ncol=3,
          save_fig=False,
          fig_path=None,
@@ -273,8 +273,9 @@ def pca_variance_ratio(adata,
 
 def pcs_features(adata,
                  log=False,
+                 size=3,
                  show_cutoff=True,
-                 fig_size=None,
+                 fig_size=(3, 3),
                  fig_ncol=3,
                  save_fig=None,
                  fig_path=None,
@@ -303,19 +304,21 @@ def pcs_features(adata,
         if(log):
             ax_i.scatter(range(n_features),
                          np.log(np.sort(
-                             np.abs(adata.uns['pca']['PCs'][:, i],))[::-1]))
+                             np.abs(adata.uns['pca']['PCs'][:, i],))[::-1]),
+                         s=size)
         else:
             ax_i.scatter(range(n_features),
                          np.sort(
-                             np.abs(adata.uns['pca']['PCs'][:, i],))[::-1])
+                             np.abs(adata.uns['pca']['PCs'][:, i],))[::-1],
+                         s=size)
         n_ft_selected_i = len(adata.uns['pca']['features'][f'pc_{i}'])
         if(show_cutoff):
-            print(f'#features selected from PC {i} is: {n_ft_selected_i}')
             ax_i.axvline(n_ft_selected_i, ls='--', c='red')
         ax_i.set_xlabel('Feautures')
         ax_i.set_ylabel('Loadings')
-        ax_i.locator_params(axis='x', nbins=5)
+        ax_i.locator_params(axis='x', nbins=3)
         ax_i.locator_params(axis='y', nbins=5)
+        ax_i.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
         ax_i.set_title(f'PC {i}')
     plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
     if(save_fig):
@@ -398,6 +401,8 @@ def _scatterplot2d(df,
                    list_hue=None,
                    hue_palette=None,
                    drawing_order='sorted',
+                   dict_drawing_order=None,
+                   size=8,
                    show_texts=False,
                    texts=None,
                    text_size=10,
@@ -479,6 +484,8 @@ def _scatterplot2d(df,
         hue_palette = dict()
     assert isinstance(hue_palette, dict), "`hue_palette` must be dict"
 
+    if dict_drawing_order is None:
+        dict_drawing_order = dict()
     assert drawing_order in ['sorted', 'random', 'original'],\
         "`drawing_order` must be one of ['original', 'sorted', 'random']"
 
@@ -506,9 +513,13 @@ def _scatterplot2d(df,
                 palette = hue_palette[hue]
             else:
                 palette = None
-            if drawing_order == 'sorted':
+            if hue in dict_drawing_order.keys():
+                param_drawing_order = dict_drawing_order[hue]
+            else:
+                param_drawing_order = drawing_order
+            if param_drawing_order == 'sorted':
                 df_updated = df.sort_values(by=hue)
-            elif drawing_order == 'random':
+            elif param_drawing_order == 'random':
                 df_updated = df.sample(frac=1, random_state=100)
             else:
                 df_updated = df
@@ -521,6 +532,7 @@ def _scatterplot2d(df,
                                    alpha=alpha,
                                    linewidth=0,
                                    palette=palette,
+                                   s=size,
                                    **kwargs)
             ax_i.legend(bbox_to_anchor=(1, 0.5),
                         loc='center left',
@@ -530,9 +542,13 @@ def _scatterplot2d(df,
         else:
             vmin_i = df[hue].min() if vmin is None else vmin
             vmax_i = df[hue].max() if vmax is None else vmax
-            if drawing_order == 'sorted':
+            if hue in dict_drawing_order.keys():
+                param_drawing_order = dict_drawing_order[hue]
+            else:
+                param_drawing_order = drawing_order
+            if param_drawing_order == 'sorted':
                 df_updated = df.sort_values(by=hue)
-            elif drawing_order == 'random':
+            elif param_drawing_order == 'random':
                 df_updated = df.sample(frac=1, random_state=100)
             else:
                 df_updated = df
@@ -541,7 +557,8 @@ def _scatterplot2d(df,
                                 c=df_updated[hue],
                                 vmin=vmin_i,
                                 vmax=vmax_i,
-                                alpha=alpha)
+                                alpha=alpha,
+                                s=size)
             cbar = plt.colorbar(sc_i,
                                 ax=ax_i,
                                 pad=0.01,
@@ -705,7 +722,9 @@ def umap(adata,
          comp1=0,
          comp2=1,
          comp3=2,
+         size=8,
          drawing_order='sorted',
+         dict_drawing_order=None,
          show_texts=False,
          texts=None,
          text_size=10,
@@ -715,7 +734,7 @@ def umap(adata,
          fig_legend_order=None,
          vmin=None,
          vmax=None,
-         alpha=0.8,
+         alpha=1,
          pad=1.08,
          w_pad=None,
          h_pad=None,
@@ -747,6 +766,8 @@ def umap(adata,
         - 'original': plot points in the same order as in input dataframe
         - 'sorted' : plot points with higher values on top.
         - 'random' : plot points in a random order
+    size: `int` (default: 8)
+        Point size.
     fig_size: `tuple`, optional (default: None)
         figure size.
     fig_ncol: `int`, optional (default: 3)
@@ -814,7 +835,11 @@ def umap(adata,
                         adata.uns['color'] = dict()
 
                     if ann not in dict_palette.keys():
-                        if ann+'_color' in adata.uns['color'].keys():
+                        if (ann+'_color' in adata.uns['color'].keys()) \
+                            and \
+                            (all(np.isin(np.unique(df_plot[ann]),
+                                         list(adata.uns['color']
+                                         [ann+'_color'].keys())))):
                             dict_palette[ann] = \
                                 adata.uns['color'][ann+'_color']
                         else:
@@ -853,6 +878,8 @@ def umap(adata,
                        list_hue=color,
                        hue_palette=dict_palette,
                        drawing_order=drawing_order,
+                       dict_drawing_order=dict_drawing_order,
+                       size=size,
                        show_texts=show_texts,
                        text_size=text_size,
                        texts=texts,
