@@ -1,6 +1,7 @@
 """Functions to calculate principal graph"""
 
 import elpigraph
+import networkx as nx
 
 from .._settings import settings
 
@@ -65,7 +66,7 @@ def learn_graph(adata,
         n_jobs = settings.n_jobs
 
     if method == 'principal_curve':
-        epg = elpigraph.computeElasticPrincipalCurve(
+        dict_epg = elpigraph.computeElasticPrincipalCurve(
             X=mat,
             NumNodes=n_nodes,
             n_cores=n_jobs,
@@ -74,8 +75,14 @@ def learn_graph(adata,
             Lambda=epg_lambda,
             Mu=epg_mu,
             alpha=epg_alpha,
-            **kwargs)
+            **kwargs)[0]
     else:
         raise ValueError(
             f'Method "{method}" is not supported')
-    return epg
+
+    G = nx.Graph()
+    G.add_edges_from(dict_epg['Edges'][0], weight=1)
+    mat_conn = nx.to_scipy_sparse_matrix(G, weight='weight')
+    adata.uns['epg'] = dict()
+    adata.uns['epg']['conn'] = mat_conn
+    adata.uns['epg']['node_pos'] = dict_epg['NodePositions']
