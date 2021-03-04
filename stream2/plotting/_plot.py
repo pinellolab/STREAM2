@@ -931,6 +931,8 @@ def graph(adata,
           fig_name='plot_graph.pdf',
           vmin=None,
           vmax=None,
+          show_node=False,
+          show_text=False,
           **kwargs):
     """Plot principal graph
 
@@ -1037,7 +1039,16 @@ def graph(adata,
                                  **kwargs)
 
     for ax in list_ax:
-        ax.scatter(node_pos[:, comp1-1], node_pos[:, comp2-1], c='black')
+        if show_node:
+            ax.scatter(node_pos[:, comp1-1], node_pos[:, comp2-1], c='black')
+        if show_text:
+            for i in np.arange(node_pos.shape[0]):
+                ax.text(node_pos[i, comp1-1],
+                        node_pos[i, comp2-1],
+                        i,
+                        color='black',
+                        ha='left',
+                        va='bottom')
         for edge_i in G.edges():
             ax.plot(node_pos[edge_i, comp1-1],
                     node_pos[edge_i, comp2-1],
