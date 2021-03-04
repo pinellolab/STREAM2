@@ -6,5 +6,6 @@ from ._plot import (
     variable_genes,
     violin,
     hist,
-    umap
+    umap,
+    graph
 )

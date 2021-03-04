@@ -2,6 +2,7 @@
 
 import umap as umap_learn
 
+
 def umap(adata,
          n_neighbors=15,
          n_components=2,
@@ -10,7 +11,7 @@ def umap(adata,
          obsm=None,
          n_dim=None,
          **kwargs,
-        ):
+         ):
     """perform UMAP
     Parameters
     ----------
@@ -20,12 +21,12 @@ def umap(adata,
     Returns
     -------
     updates `adata` with the following fields:
-    `.obsm['X_umap']` : `array`
+    `.obsm['X_umap']` : `numpy.ndarray`
         UMAP coordinates of samples.
     """
 
     if(sum(list(map(lambda x: x is not None,
-                    [layer,obsm]))) == 2):
+                    [layer, obsm]))) == 2):
         raise ValueError("Only one of `layer` and `obsm` can be used")
     elif(obsm is not None):
         X = adata.obsm[obsm]
@@ -41,4 +42,3 @@ def umap(adata,
                               **kwargs)
     reducer.fit(X)
     adata.obsm['X_umap'] = reducer.embedding_
-

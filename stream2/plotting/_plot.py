@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
+import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pandas.core.dtypes.common import is_numeric_dtype
@@ -403,9 +404,6 @@ def _scatterplot2d(df,
                    drawing_order='sorted',
                    dict_drawing_order=None,
                    size=8,
-                   show_texts=False,
-                   texts=None,
-                   text_size=10,
                    fig_size=None,
                    fig_ncol=3,
                    fig_legend_ncol=1,
@@ -580,18 +578,6 @@ def _scatterplot2d(df,
                                     aspect=40)
                 cbar.solids.set_edgecolor("face")
                 cbar.ax.locator_params(nbins=5)
-        if show_texts:
-            if texts is not None:
-                plt_texts = [plt.text(df[x][t],
-                                      df[y][t],
-                                      t,
-                                      fontdict={'family': 'serif',
-                                                'color': 'black',
-                                                'weight': 'normal',
-                                                'size': text_size})
-                             for t in texts]
-                adjust_text(plt_texts,
-                            arrowprops=dict(arrowstyle='->', color='black'))
         ax_i.set_xlabel(x)
         ax_i.set_ylabel(y)
         ax_i.locator_params(axis='x', nbins=5)
@@ -738,15 +724,12 @@ def umap(adata,
          color=None,
          dict_palette=None,
          n_components=None,
-         comp1=0,
-         comp2=1,
-         comp3=2,
+         comp1=1,
+         comp2=2,
+         comp3=3,
          size=8,
          drawing_order='sorted',
          dict_drawing_order=None,
-         show_texts=False,
-         texts=None,
-         text_size=10,
          fig_size=None,
          fig_ncol=3,
          fig_legend_ncol=1,
@@ -847,9 +830,6 @@ def umap(adata,
                        y='UMAP2',
                        drawing_order=drawing_order,
                        size=size,
-                       show_texts=show_texts,
-                       text_size=text_size,
-                       texts=texts,
                        fig_size=fig_size,
                        alpha=alpha,
                        pad=pad,
@@ -914,9 +894,6 @@ def umap(adata,
                            drawing_order=drawing_order,
                            dict_drawing_order=dict_drawing_order,
                            size=size,
-                           show_texts=show_texts,
-                           text_size=text_size,
-                           texts=texts,
                            fig_size=fig_size,
                            fig_ncol=fig_ncol,
                            fig_legend_ncol=fig_legend_ncol,
@@ -931,3 +908,145 @@ def umap(adata,
                            fig_path=fig_path,
                            fig_name=fig_name,
                            **kwargs)
+
+
+def graph(adata,
+          comp1=1,
+          comp2=2,
+          color=None,
+          dict_palette=None,
+          size=8,
+          drawing_order='random',
+          dict_drawing_order=None,
+          fig_size=None,
+          fig_ncol=3,
+          fig_legend_ncol=1,
+          fig_legend_order=None,
+          alpha=0.9,
+          pad=1.08,
+          w_pad=None,
+          h_pad=None,
+          save_fig=None,
+          fig_path=None,
+          fig_name='plot_graph.pdf',
+          vmin=None,
+          vmax=None,
+          **kwargs):
+    """Plot principal graph
+
+    Parameters
+    ----------
+    adata: `AnnData`
+        Anndata object.
+
+    Returns
+    -------
+    """
+    if fig_size is None:
+        fig_size = mpl.rcParams['figure.figsize']
+    if save_fig is None:
+        save_fig = settings.save_fig
+    if fig_path is None:
+        fig_path = os.path.join(settings.workdir, 'figures')
+
+    if dict_palette is None:
+        dict_palette = dict()
+
+    mat_conn = adata.uns['epg']['conn']
+    node_pos = adata.uns['epg']['node_pos']
+    epg_params = adata.uns['epg']['params']
+    obsm = epg_params['obsm']
+    layer = epg_params['layer']
+    G = nx.from_scipy_sparse_matrix(mat_conn)
+
+    if(obsm is not None):
+        X = adata.obsm[obsm].copy()
+    elif(layer is not None):
+        X = adata.layers[layer].copy()
+    else:
+        X = adata.X.copy()
+    df_plot = pd.DataFrame(index=adata.obs.index,
+                           data=X[:, [comp1-1, comp2-1]],
+                           columns=[f'Dim {comp1}', f'Dim {comp2}'])
+    if color is None:
+        list_ax = _scatterplot2d(df_plot,
+                                 x=f'Dim {comp1}',
+                                 y=f'Dim {comp2}',
+                                 drawing_order=drawing_order,
+                                 size=size,
+                                 fig_size=fig_size,
+                                 alpha=alpha,
+                                 pad=pad,
+                                 w_pad=w_pad,
+                                 h_pad=h_pad,
+                                 save_fig=False,
+                                 copy=True,
+                                 **kwargs)
+    else:
+        color = list(dict.fromkeys(color))  # remove duplicate keys
+        for ann in color:
+            if(ann in adata.obs_keys()):
+                df_plot[ann] = adata.obs[ann]
+                if(not is_numeric_dtype(df_plot[ann])):
+                    if 'color' not in adata.uns_keys():
+                        adata.uns['color'] = dict()
+
+                    if ann not in dict_palette.keys():
+                        if (ann+'_color' in adata.uns['color'].keys()) \
+                            and \
+                            (all(np.isin(np.unique(df_plot[ann]),
+                                         list(adata.uns['color']
+                                         [ann+'_color'].keys())))):
+                            dict_palette[ann] = \
+                                adata.uns['color'][ann+'_color']
+                        else:
+                            dict_palette[ann] = \
+                                generate_palette(adata.obs[ann])
+                            adata.uns['color'][ann+'_color'] = \
+                                dict_palette[ann].copy()
+                    else:
+                        if ann+'_color' not in adata.uns['color'].keys():
+                            adata.uns['color'][ann+'_color'] = \
+                                dict_palette[ann].copy()
+
+            elif(ann in adata.var_names):
+                df_plot[ann] = adata.obs_vector(ann)
+            else:
+                raise ValueError(f"could not find {ann} in `adata.obs.columns`"
+                                 " and `adata.var_names`")
+        list_ax = _scatterplot2d(df_plot,
+                                 x=f'Dim {comp1}',
+                                 y=f'Dim {comp2}',
+                                 list_hue=color,
+                                 hue_palette=dict_palette,
+                                 drawing_order=drawing_order,
+                                 dict_drawing_order=dict_drawing_order,
+                                 size=size,
+                                 fig_size=fig_size,
+                                 fig_ncol=fig_ncol,
+                                 fig_legend_ncol=fig_legend_ncol,
+                                 fig_legend_order=fig_legend_order,
+                                 vmin=vmin,
+                                 vmax=vmax,
+                                 alpha=alpha,
+                                 pad=pad,
+                                 w_pad=w_pad,
+                                 h_pad=h_pad,
+                                 save_fig=False,
+                                 copy=True,
+                                 **kwargs)
+
+    for ax in list_ax:
+        ax.scatter(node_pos[:, comp1-1], node_pos[:, comp2-1], c='black')
+        for edge_i in G.edges():
+            ax.plot(node_pos[edge_i, comp1-1],
+                    node_pos[edge_i, comp2-1],
+                    c='black')
+    if save_fig:
+        fig = plt.gcf()
+        if(not os.path.exists(fig_path)):
+            os.makedirs(fig_path)
+        fig.savefig(os.path.join(fig_path, fig_name),
+                    pad_inches=1,
+                    bbox_inches='tight')
+        plt.close(fig)

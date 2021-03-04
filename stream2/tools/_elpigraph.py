@@ -1,5 +1,6 @@
 """Functions to calculate principal graph"""
 
+import numpy as np
 import elpigraph
 import networkx as nx
 
@@ -38,11 +39,11 @@ def learn_graph(adata,
 
     Returns
     -------
-    updates `adata.uns['clone']` with the following field.
-    distance: `sparse matrix`` (`.uns['clone']['distance']`)
-        A condensed clone distance matrix.
-        It can be converted into a redundant square matrix using `squareform`
-        from Scipy.
+    updates `adata.uns['epg']` with the following field.
+    conn: `sparse matrix` (`.uns['epg']['conn']`)
+        A connectivity sparse matrix.
+    node_pos: `array` (`.uns['epg']['node_pos']`)
+        Node positions.
     """
 
     if(sum(list(map(lambda x: x is not None,
@@ -81,8 +82,18 @@ def learn_graph(adata,
             f'Method "{method}" is not supported')
 
     G = nx.Graph()
-    G.add_edges_from(dict_epg['Edges'][0], weight=1)
-    mat_conn = nx.to_scipy_sparse_matrix(G, weight='weight')
+    G.add_edges_from(dict_epg['Edges'][0].tolist(), weight=1)
+    mat_conn = nx.to_scipy_sparse_matrix(G,
+                                         nodelist=np.arange(n_nodes),
+                                         weight='weight')
     adata.uns['epg'] = dict()
     adata.uns['epg']['conn'] = mat_conn
     adata.uns['epg']['node_pos'] = dict_epg['NodePositions']
+    adata.uns['epg']['params'] = {
+        'obsm': obsm,
+        'layer': layer,
+        'n_nodes': n_nodes,
+        'epg_lamba': epg_lambda,
+        'epg_mu': epg_mu,
+        'epg_alpha': epg_alpha,
+    }
