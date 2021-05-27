@@ -86,9 +86,34 @@ def learn_graph(adata,
     mat_conn = nx.to_scipy_sparse_matrix(G,
                                          nodelist=np.arange(n_nodes),
                                          weight='weight')
+
+    # partition points
+    node_id, node_dist = elpigraph.src.core.PartitionData(
+        X=mat,
+        NodePositions=dict_epg['NodePositions'],
+        MaxBlockSize=n_nodes**4,
+        SquaredX=np.sum(mat**2, axis=1, keepdims=1),
+    )
+    # project points onto edges
+    dict_proj = elpigraph.src.reporting.project_point_onto_graph(
+        X=mat,
+        NodePositions=dict_epg['NodePositions'],
+        Edges=dict_epg['Edges'][0],
+        Partition=node_id,
+    )
+
+    adata.obs['epg_node_id'] = node_id.flatten()
+    adata.obs['epg_node_dist'] = node_dist
+    adata.obs['epg_edge_id'] = dict_proj['EdgeID'].astype(int)
+    adata.obs['epg_edge_loc'] = dict_proj['ProjectionValues']
+
+    adata.obsm['X_epg_proj'] = dict_proj['X_projected']
+
     adata.uns['epg'] = dict()
     adata.uns['epg']['conn'] = mat_conn
     adata.uns['epg']['node_pos'] = dict_epg['NodePositions']
+    adata.uns['epg']['edge'] = dict_epg['Edges'][0]
+    adata.uns['epg']['edge_len'] = dict_proj['EdgeLen']
     adata.uns['epg']['params'] = {
         'obsm': obsm,
         'layer': layer,
