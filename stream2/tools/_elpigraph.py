@@ -46,6 +46,12 @@ def learn_graph(adata,
         Node positions.
     """
 
+    assert (method in ['principal_curve',
+                       'principal_tree',
+                       'principal_circle']),\
+        "`method` must be one of "\
+        "['principal_curve','principal_tree','principal_circle']"
+
     if(sum(list(map(lambda x: x is not None,
                     [layer, obsm]))) == 2):
         raise ValueError("Only one of `layer` and `obsm` can be used")
@@ -77,9 +83,28 @@ def learn_graph(adata,
             Mu=epg_mu,
             alpha=epg_alpha,
             **kwargs)[0]
-    else:
-        raise ValueError(
-            f'Method "{method}" is not supported')
+    if method == 'principal_tree':
+        dict_epg = elpigraph.computeElasticPrincipalTree(
+            X=mat,
+            NumNodes=n_nodes,
+            n_cores=n_jobs,
+            Do_PCA=False,
+            CenterData=False,
+            Lambda=epg_lambda,
+            Mu=epg_mu,
+            alpha=epg_alpha,
+            **kwargs)[0]
+    if method == 'principal_circle':
+        dict_epg = elpigraph.computeElasticPrincipalCircle(
+            X=mat,
+            NumNodes=n_nodes,
+            n_cores=n_jobs,
+            Do_PCA=False,
+            CenterData=False,
+            Lambda=epg_lambda,
+            Mu=epg_mu,
+            alpha=epg_alpha,
+            **kwargs)[0]
 
     G = nx.Graph()
     G.add_edges_from(dict_epg['Edges'][0].tolist(), weight=1)
@@ -115,6 +140,7 @@ def learn_graph(adata,
     adata.uns['epg']['edge'] = dict_epg['Edges'][0]
     adata.uns['epg']['edge_len'] = dict_proj['EdgeLen']
     adata.uns['epg']['params'] = {
+        'method': method,
         'obsm': obsm,
         'layer': layer,
         'n_nodes': n_nodes,
