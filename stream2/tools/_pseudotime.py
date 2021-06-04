@@ -7,6 +7,7 @@ import networkx as nx
 def infer_pseudotime(adata,
                      source,
                      target=None,
+                     nodes_to_include=None,
                      ):
     """Infer pseudotime
     Parameters
@@ -27,8 +28,29 @@ def infer_pseudotime(adata,
             epg_edge_len))
     G.add_weighted_edges_from(edges_weighted, weight='len')
     if target is not None:
-        # nodes on the shortest path
-        nodes_sp = nx.shortest_path(G, source=source, target=target)
+        if nodes_to_include is None:
+            # nodes on the shortest path
+            nodes_sp = nx.shortest_path(G,
+                                        source=source,
+                                        target=target,
+                                        weight='len')
+        else:
+            assert isinstance(nodes_to_include, list),\
+                "`nodes_to_include` must be list"
+            # lists of simple paths, in order from shortest to longest
+            list_paths = list(
+                nx.shortest_simple_paths(G,
+                                         source=source,
+                                         target=target,
+                                         weight='len'))
+            flag_exist = False
+            for p in list_paths:
+                if set(nodes_to_include).issubset(p):
+                    nodes_sp = p
+                    flag_exist = True
+                    break
+            if not flag_exist:
+                return f'no path that passes {nodes_to_include} exists'
     else:
         nodes_sp = [source] + [v for u, v in nx.bfs_edges(G, source)]
     G_sp = G.subgraph(nodes_sp).copy()
