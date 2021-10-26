@@ -286,7 +286,7 @@ def seed_graph(
     adata.obs[clustering] = ["cluster " + str(x) for x in cluster_labels]
 
     # Minimum Spanning Tree
-    print("Calculatng minimum spanning tree...")
+    print("Calculating minimum spanning tree...")
     D = pairwise_distances(epg_nodes_pos)
     G = nx.from_numpy_matrix(D)
     mst = nx.minimum_spanning_tree(G)
