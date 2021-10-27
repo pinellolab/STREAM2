@@ -335,12 +335,12 @@ def _store_graph_attributes(adata, mat, key):
         Partition=node_id,
     )
 
-    adata.obs["epg_node_id"] = node_id.flatten()
-    adata.obs["epg_node_dist"] = node_dist
-    adata.obs["epg_edge_id"] = dict_proj["EdgeID"].astype(int)
-    adata.obs["epg_edge_loc"] = dict_proj["ProjectionValues"]
+    adata.obs[f"{key}_node_id"] = node_id.flatten()
+    adata.obs[f"{key}_node_dist"] = node_dist
+    adata.obs[f"{key}_edge_id"] = dict_proj["EdgeID"].astype(int)
+    adata.obs[f"{key}_edge_loc"] = dict_proj["ProjectionValues"]
 
-    adata.obsm["X_epg_proj"] = dict_proj["X_projected"]
+    adata.obsm[f"X_{key}_proj"] = dict_proj["X_projected"]
 
     adata.uns[key]["conn"] = mat_conn
     adata.uns[key]["edge_len"] = dict_proj["EdgeLen"]

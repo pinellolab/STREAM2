@@ -2,7 +2,6 @@
 
 import numpy as np
 import networkx as nx
-import elpigraph
 
 
 def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg"):
@@ -48,13 +47,15 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
 
     dict_dist_to_source = nx.shortest_path_length(G_sp, source=source, weight="len")
 
-    cells = adata.obs_names[np.isin(adata.obs["epg_node_id"], nodes_sp)]
-    id_edges_cell = adata.obs.loc[cells, "epg_edge_id"].tolist()
+    cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
+    id_edges_cell = adata.obs.loc[cells, f"{key}_edge_id"].tolist()
     edges_cell = adata.uns[key]["edge"][id_edges_cell, :]
     len_edges_cell = adata.uns[key]["edge_len"][id_edges_cell]
 
     # proportion on the edge
-    prop_edge = np.clip(adata.obs.loc[cells, "epg_edge_loc"], a_min=0, a_max=1).values
+    prop_edge = np.clip(
+        adata.obs.loc[cells, f"{key}_edge_loc"], a_min=0, a_max=1
+    ).values
 
     dist_to_source = []
     for i in np.arange(edges_cell.shape[0]):
@@ -67,5 +68,5 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
     dist_on_edge = len_edges_cell * prop_edge
     dist = dist_to_source + dist_on_edge
 
-    adata.obs["pseudotime"] = np.nan
-    adata.obs.loc[cells, "pseudotime"] = dist
+    adata.obs[f"{key}_pseudotime"] = np.nan
+    adata.obs.loc[cells, f"{key}_pseudotime"] = dist
