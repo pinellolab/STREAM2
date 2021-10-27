@@ -61,11 +61,11 @@ def learn_graph(
     if use_seed:
         if "seed_epg" not in adata.uns:
             raise ValueError(
-                f"could not find 'seed_epg' in `adata.uns. Please run st.seed_graph"
+                f"could not find 'seed_epg' in `adata.uns. Please run st.tl.seed_graph"
             )
         if n_nodes <= len(adata.uns["seed_epg"]["node_pos"]):
             raise ValueError(
-                f"The seed graph already has at least {n_nodes} nodes. Please run st.learn_graph with higher n_nodes"
+                f"The seed graph already has at least {n_nodes} nodes. Please run st.tl.learn_graph with higher n_nodes"
             )
         kwargs["InitNodePositions"] = adata.uns["seed_epg"]["node_pos"]
         kwargs["InitEdges"] = adata.uns["seed_epg"]["edge"]
