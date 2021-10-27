@@ -347,7 +347,7 @@ def _store_graph_attributes(adata, mat, key):
     adata.uns[key]["edge_len"] = dict_proj["EdgeLen"]
 
 
-def get_branch_id(adata, key="epg"):
+def _get_branch_id(adata, key="epg"):
     """ add adata.obs['branch_id'] """
     # get branches
     net = elpigraph.src.graphs.ConstructGraph({"Edges": [a.uns[key]["edge"]]})
