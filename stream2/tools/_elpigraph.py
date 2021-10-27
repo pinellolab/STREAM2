@@ -1,6 +1,7 @@
 """Functions to calculate principal graph"""
 
 import numpy as np
+import pandas as pd
 import elpigraph
 import networkx as nx
 from sklearn.cluster import SpectralClustering, AffinityPropagation, KMeans
@@ -344,3 +345,39 @@ def _store_graph_attributes(adata, mat, key):
 
     adata.uns[key]["conn"] = mat_conn
     adata.uns[key]["edge_len"] = dict_proj["EdgeLen"]
+
+
+def get_branch_id(adata, key="epg"):
+    """ add adata.obs['branch_id'] """
+    # get branches
+    net = elpigraph.src.graphs.ConstructGraph({"Edges": [a.uns[key]["edge"]]})
+    branches = elpigraph.src.graphs.GetSubGraph(net, "branches")
+    _dict_branches = {
+        (b[0], b[-1]): b for i, b in enumerate(branches)
+    }  # temporary branch node lists (not in order)
+
+    ordered_edges, ordered_nodes = elpigraph.src.supervised.bf_search(
+        _dict_branches, root_node=np.where(np.array(net.degree()) == 1)[0][0]
+    )
+    # create ordered dict
+    dict_branches = {}
+    for i, e in enumerate(ordered_edges):  # for each branch
+        # store branch in order (both the key and the list)
+        if e not in _dict_branches:
+            dict_branches[e] = _dict_branches[e[::-1]][::-1]
+        else:
+            dict_branches[e] = _dict_branches[e]
+
+    # disable warning
+    pd.options.mode.chained_assignment = None
+
+    point_edges = adata.uns[key]["edge"][adata.obs[f"{key}_edge_id"]]
+    a.obs[f"{key}_branch_id"] = ""
+    for i, e in enumerate(point_edges):
+        for k, v in dict_branches.items():
+            if all(np.isin(e, v)):
+                adata.obs[f"{key}_branch_id"][i] = k
+
+    # reactivate warning
+    pd.options.mode.chained_assignment = "warn"
+
