@@ -16,44 +16,6 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
     -------
     """
 
-    if adata.uns[key]["params"]["obsm"] is not None:
-        mat = adata.obsm[adata.uns[key]["params"]["obsm"]]
-    elif adata.uns[key]["params"]["layer"] is not None:
-        mat = adata.obsm[adata.uns[key]["params"]["layer"]]
-    else:
-        mat = adata.X
-
-    G = nx.Graph()
-    G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
-    mat_conn = nx.to_scipy_sparse_matrix(
-        G, nodelist=np.arange(len(adata.uns[key]["node_pos"])), weight="weight"
-    )
-
-    # partition points
-    node_id, node_dist = elpigraph.src.core.PartitionData(
-        X=mat,
-        NodePositions=adata.uns[key]["node_pos"],
-        MaxBlockSize=len(adata.uns[key]["node_pos"]) ** 4,
-        SquaredX=np.sum(mat ** 2, axis=1, keepdims=1),
-    )
-    # project points onto edges
-    dict_proj = elpigraph.src.reporting.project_point_onto_graph(
-        X=mat,
-        NodePositions=adata.uns[key]["node_pos"],
-        Edges=adata.uns[key]["edge"],
-        Partition=node_id,
-    )
-
-    adata.obs["epg_node_id"] = node_id.flatten()
-    adata.obs["epg_node_dist"] = node_dist
-    adata.obs["epg_edge_id"] = dict_proj["EdgeID"].astype(int)
-    adata.obs["epg_edge_loc"] = dict_proj["ProjectionValues"]
-
-    adata.obsm["X_epg_proj"] = dict_proj["X_projected"]
-
-    adata.uns[key]["conn"] = mat_conn
-    adata.uns[key]["edge_len"] = dict_proj["EdgeLen"]
-
     epg_edge = adata.uns[key]["edge"]
     epg_edge_len = adata.uns[key]["edge_len"]
     G = nx.Graph()
