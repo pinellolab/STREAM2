@@ -396,7 +396,7 @@ def _get_branch_id(adata, key="epg"):
     pd.options.mode.chained_assignment = None
 
     point_edges = adata.uns[key]["edge"][adata.obs[f"{key}_edge_id"]]
-    a.obs[f"{key}_branch_id"] = ""
+    adata.obs[f"{key}_branch_id"] = ""
     for i, e in enumerate(point_edges):
         for k, v in dict_branches.items():
             if all(np.isin(e, v)):
