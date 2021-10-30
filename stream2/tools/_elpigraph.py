@@ -374,7 +374,7 @@ def _store_graph_attributes(adata, mat, key):
 def _get_branch_id(adata, key="epg"):
     """ add adata.obs['branch_id'] """
     # get branches
-    net = elpigraph.src.graphs.ConstructGraph({"Edges": [a.uns[key]["edge"]]})
+    net = elpigraph.src.graphs.ConstructGraph({"Edges": [adata.uns[key]["edge"]]})
     branches = elpigraph.src.graphs.GetSubGraph(net, "branches")
     _dict_branches = {
         (b[0], b[-1]): b for i, b in enumerate(branches)
