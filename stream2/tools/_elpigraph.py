@@ -161,6 +161,7 @@ def seed_graph(
     n_neighbors=50,
     nb_pct=None,
     paths=[],
+    paths_forbidden=[],
     labels=None,
 ):
 
@@ -201,6 +202,8 @@ def seed_graph(
         The principal graph will be learnt in the new manifold.
     paths: list of lists, optional (default: [])
         Paths between categorical labels used for supervised MST initialization
+    paths_forbidden: list of lists, optional (default: [])
+        Forbidden paths between categorical labels used for supervised MST initialization
     labels: `str`, optional (default: None)
         Categorical labels for supervised MST initialization
 
@@ -304,7 +307,12 @@ def seed_graph(
         )
     elif len(paths) > 0 and labels is not None:
         init_nodes_pos, clus_adjmat = _categorical_adjmat(
-            mat, init_nodes_pos, paths, adata.obs[labels], n_neighbors=10
+            mat,
+            init_nodes_pos,
+            paths,
+            paths_forbidden,
+            adata.obs[labels],
+            n_neighbors=10,
         )
         D = pairwise_distances(init_nodes_pos)
         G = nx.from_numpy_matrix(D * clus_adjmat)
@@ -411,22 +419,34 @@ def _get_branch_id(adata, key="epg"):
 #############################################
 
 
-def _get_labels_adjmat(labels_u, labels_ignored, paths):
+def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
     """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
     num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
     adjmat = np.zeros(
         (len(labels_u) + len(labels_ignored), len(labels_u) + len(labels_ignored)),
         dtype=int,
     )
+
+    # allow within-cluster connections
+    np.fill_diagonal(adjmat, 1)
+
+    # allow connections given from paths
     for p in paths:
         for i in range(len(p) - 1):
             adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
                 num_labels[p[i + 1]], num_labels[p[i]]
             ] = 1
 
+    # allow unspecified clusters to connect to all other clusters
     for l in labels_ignored:
         adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 1
-    np.fill_diagonal(adjmat, 1)
+
+    # remove forbidden connections given from paths_forbidden
+    for p in paths_forbidden:
+        for i in range(len(p) - 1):
+            adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
+                num_labels[p[i + 1]], num_labels[p[i]]
+            ] = 0
 
     return adjmat, num_labels
 
@@ -446,22 +466,27 @@ def _get_clus_adjmat(adjmat, num_modes, n_clusters):
     return adjmat_clus
 
 
-def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
+def _categorical_adjmat(
+    mat, init_nodes_pos, paths, paths_forbidden, labels, n_neighbors=10
+):
     """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
+
     # label adjacency matrix
-    adjmat, num_labels = _get_labels_adjmat(labels_u, labels_ignored, paths)
+    adjmat, num_labels = _get_labels_adjmat(
+        labels_u, labels_ignored, paths, paths_forbidden
+    )
     # assign label to points
-    dis, ind = (
+    _, ind = (
         NearestNeighbors(n_neighbors=n_neighbors).fit(mat).kneighbors(init_nodes_pos)
     )
     modes = scipy.stats.mode(np.array(labels)[ind], axis=1).mode.flatten()
     num_modes = np.array([num_labels[m] for m in modes])
 
     # add centroids if necessary to prevent bug (if some label has no kmean assigned to it)
-    labels_miss = np.setdiff1d(labels_u, modes)
+    labels_miss = np.setdiff1d(labels, modes)
     if len(labels_miss) > 0:
         print(
             f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
