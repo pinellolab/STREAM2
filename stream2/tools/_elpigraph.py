@@ -419,6 +419,19 @@ def _get_branch_id(adata, key="epg"):
 #############################################
 
 
+def _get_partition_modes(mat, init_nodes_pos, labels):
+    """ Return most frequent label assigned to each node """
+    labels = np.array(labels)
+    part = elpigraph.src.core.PartitionData(
+        mat, init_nodes_pos, 10 ** 6, np.sum(mat ** 2, axis=1, keepdims=1)
+    )[0].flatten()
+    modes = np.empty(len(init_nodes_pos), dtype=labels.dtype)
+
+    for i in range(len(init_nodes_pos)):
+        modes[i] = scipy.stats.mode(labels[part == i]).mode[0]
+    return modes
+
+
 def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
     """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
     num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
@@ -473,20 +486,16 @@ def _categorical_adjmat(
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
-
     # label adjacency matrix
     adjmat, num_labels = _get_labels_adjmat(
         labels_u, labels_ignored, paths, paths_forbidden
     )
-    # assign label to points
-    _, ind = (
-        NearestNeighbors(n_neighbors=n_neighbors).fit(mat).kneighbors(init_nodes_pos)
-    )
-    modes = scipy.stats.mode(np.array(labels)[ind], axis=1).mode.flatten()
+    # assign label to nodes
+    modes = _get_partition_modes(mat, init_nodes_pos, labels)
     num_modes = np.array([num_labels[m] for m in modes])
 
     # add centroids if necessary to prevent bug (if some label has no kmean assigned to it)
-    labels_miss = np.setdiff1d(labels, modes)
+    labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(
             f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"

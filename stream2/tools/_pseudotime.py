@@ -3,7 +3,6 @@
 import numpy as np
 import networkx as nx
 
-
 def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg"):
     """Infer pseudotime
     Parameters
@@ -70,3 +69,6 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
 
     adata.obs[f"{key}_pseudotime"] = np.nan
     adata.obs.loc[cells, f"{key}_pseudotime"] = dist
+    adata.uns[f'{key}_pseudotime_params'] = {'source':source,
+                                             'target':target,
+                                             'nodes_to_include':nodes_to_include}
