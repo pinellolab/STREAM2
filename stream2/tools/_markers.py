@@ -4,9 +4,9 @@ import pandas as pd
 import scipy
 import multiprocessing
 import os
+import networkx as nx
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
-
 
 @nb.njit
 def nb_unique1d(ar):
@@ -79,7 +79,7 @@ def _xicorr_loop_parallel(X, Y):
 
 def nb_spearman(x, Y):
     """
-    Fast equivalent to 
+    Fast equivalent to
     for i in range(y.shape[1]): spearmanr(x,y[:,i]).correlation
     """
     return pearson_corr(_rankdata(x[None]), _rankdata(Y.T))
@@ -133,39 +133,20 @@ def p_val(r, n):
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
-def scale_marker_expr(params):
-    df_marker_detection = params[0]
-    marker = params[1]
-    percentile_expr = params[2]
-    marker_values = df_marker_detection[marker].copy()
-    if min(marker_values) < 0:
-        min_marker_values = np.percentile(
-            marker_values[marker_values < 0], 100 - percentile_expr
-        )
-        marker_values[marker_values < min_marker_values] = min_marker_values
-        max_marker_values = np.percentile(
-            marker_values[marker_values > 0], percentile_expr
-        )
-        marker_values[marker_values > max_marker_values] = max_marker_values
-        marker_values = marker_values - min(marker_values)
-    else:
-        max_marker_values = np.percentile(
-            marker_values[marker_values > 0], percentile_expr
-        )
-        marker_values[marker_values > max_marker_values] = max_marker_values
-    marker_values = marker_values / max_marker_values
-    return marker_values
-
+def scale_marker_expr(df_marker_detection, percentile_expr):
+    maxValues = df_marker_detection.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
+    df_marker_detection_scaled = df_marker_detection / maxValues[:,None].T
+    df_marker_detection_scaled[df_marker_detection_scaled > 1] = 1
+    return df_marker_detection_scaled
 
 def detect_transition_markers(
     adata,
-    marker_list=None,
-    cutoff_spearman=0.4,
-    cutoff_logfc=0.25,
+    source=None,
+    target=None,
+    nodes_to_include=None,
     percentile_expr=95,
     n_jobs=1,
     min_num_cells=5,
-    use_precomputed=True,
     key="epg",
 ):
 
@@ -173,62 +154,65 @@ def detect_transition_markers(
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    source = adata.uns[f"{key}_pseudotime_params"]["source"]
-    target = adata.uns[f"{key}_pseudotime_params"]["target"]
-    nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
+    #### Extract cells by provided nodes
+    epg_edge = adata.uns[key]["edge"]
+    epg_edge_len = adata.uns[key]["edge_len"]
+    G = nx.Graph()
+    edges_weighted = list(zip(epg_edge[:, 0], epg_edge[:, 1], epg_edge_len))
+    G.add_weighted_edges_from(edges_weighted, weight="len")
 
-    cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
-    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
+    if source is None:
+        source = adata.uns[f"{key}_pseudotime_params"]["source"]
+    if target is None:
+        target = adata.uns[f"{key}_pseudotime_params"]["target"]
+    if nodes_to_include is None:
+        nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
 
-    if marker_list is None:
-        print("Scanning all features ...")
-        marker_list = adata.var_names.tolist()
+    if target is not None:
+        if nodes_to_include is None:
+            # nodes on the shortest path
+            nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
+        else:
+            assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
+            # lists of simple paths, in order from shortest to longest
+            list_paths = list(
+                nx.shortest_simple_paths(G, source=source, target=target, weight="len")
+            )
+            flag_exist = False
+            for p in list_paths:
+                if set(nodes_to_include).issubset(p):
+                    nodes_sp = p
+                    flag_exist = True
+                    break
+            if not flag_exist:
+                print(f"no path that passes {nodes_to_include} exists")
     else:
-        print("Scanning the specified marker list ...")
-        ###remove duplicate keys
-        marker_list = list(dict.fromkeys(marker_list))
-        for marker in marker_list:
-            if marker not in adata.var_names:
-                raise ValueError("could not find '%s' in `adata.var_names`" % (marker))
+        nodes_sp = [source] + [v for u, v in nx.bfs_edges(G, source)]
+
+    cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
+    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include,target)
+    print("Cells are slected for Path_Source_Nodes-to-include_Target : ", path_alias)
 
     #### Scale matrix with expressed markers
-    if use_precomputed and ("scaled_marker_expr" in adata.uns.keys()):
-        print("Importing precomputed scaled marker expression matrix ...")
-        results = adata.uns["scaled_marker_expr"]
-        df_results = pd.DataFrame(results).T
-        if all(np.isin(marker_list, df_results.columns.tolist())):
-            input_markers_expressed = marker_list
-            df_scaled_marker_expr = df_results[input_markers_expressed]
-        else:
-            raise ValueError(
-                "Not all markers in `marker_list` can be found in precomputed scaled marker expression matrix. Please set `use_precomputed=False`"
-            )
+    input_markers = adata.var_names.tolist()
+    df_sc = pd.DataFrame(
+        index=adata.obs_names.tolist(),
+        data=adata[:, input_markers].X,
+        columns=input_markers,
+        )
 
-    else:
-        input_markers = marker_list
-        df_sc = pd.DataFrame(
-            index=adata.obs_names.tolist(),
-            data=adata[:, input_markers].X,
-            columns=input_markers,
-        )
-        print(
-            "Filtering out markers that are expressed in less than "
-            + str(min_num_cells)
-            + " cells ..."
-        )
-        input_markers_expressed = np.array(input_markers)[
-            np.where((df_sc[input_markers] > 0).sum(axis=0) > min_num_cells)[0]
-        ].tolist()
-        df_marker_detection = df_sc[input_markers_expressed].copy()
-        print(str(n_jobs) + " cpus are being used ...")
-        params = [
-            (df_marker_detection, x, percentile_expr) for x in input_markers_expressed
-        ]
-        pool = multiprocessing.Pool(processes=n_jobs)
-        results = pool.map(scale_marker_expr, params)
-        pool.close()
-        adata.uns["scaled_marker_expr"] = results
-        df_scaled_marker_expr = pd.DataFrame(results).T
+    print(
+        "Filtering out markers that are expressed in less than "
+        + str(min_num_cells)
+        + " cells ..."
+    )
+    input_markers_expressed = np.array(input_markers)[
+        np.where((df_sc[input_markers] > 0).sum(axis=0) > min_num_cells)[0]
+    ].tolist()
+    df_marker_detection = df_sc[input_markers_expressed].copy()
+
+    df_scaled_marker_expr = scale_marker_expr(df_marker_detection, percentile_expr)
+    adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
     print(str(len(input_markers_expressed)) + " markers are being scanned ...")
 
@@ -256,7 +240,7 @@ def detect_transition_markers(
         )
     )
 
-    ix_cutoff = np.array(logfc > cutoff_logfc)
+    ix_cutoff = np.array(logfc > 1)
 
     if sum(ix_cutoff) == 0:
         print(
@@ -283,9 +267,9 @@ def detect_transition_markers(
         p_values = df_stat_pval_qval["pval"]
         q_values = multipletests(p_values, method="fdr_bh")[1]
         df_stat_pval_qval["qval"] = q_values
-        dict_tg_edges[path_alias] = df_stat_pval_qval[
-            (abs(df_stat_pval_qval.stat) >= cutoff_spearman)
-        ].sort_values(["qval"])
+
+        dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
+
         dict_tg_edges[path_alias].to_csv(
             os.path.join(
                 file_path,
@@ -299,4 +283,3 @@ def detect_transition_markers(
         adata.uns["transition_markers"].update(dict_tg_edges)
     else:
         adata.uns["transition_markers"] = dict_tg_edges
-
