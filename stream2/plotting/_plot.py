@@ -14,9 +14,14 @@ from pandas.api.types import (
     is_categorical_dtype,
 )
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import statsmodels.api as sm
+lowess = sm.nonparametric.lowess
 
 from .._settings import settings
 from ._utils import generate_palette
+from .. import _utils
 
 
 def violin(
@@ -1093,3 +1098,33 @@ def graph(
             os.makedirs(fig_path)
         fig.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
         plt.close(fig)
+
+
+
+
+def plot_features_in_pseudotime(adatas, assays, features,source=None,target=None,nodes_to_include=None, frac=0.2, key='epg'):
+    fig = make_subplots(rows=len(features), cols=len(adatas), subplot_titles=assays)
+
+    for i in range(len(adatas)):
+        df, path_alias = _utils.get_expdata(adatas[i], source, target, nodes_to_include, key)
+        for j in range(len(features)):
+            feature = features[j]
+            fig.add_trace(go.Scatter(x=df[f"{key}_pseudotime"], y=df[feature], opacity=0.8,
+                                     mode='markers',name=assays[i]), row=j+1, col=i+1)
+
+            y_lowess = lowess(df[feature], df[f"{key}_pseudotime"], frac=frac)
+            fig.add_trace(go.Scatter(x=y_lowess[:,0], y=y_lowess[:,1],name = ' ',
+                                    line=dict(color='black')),row=j+1, col=i+1)
+            fig.update_xaxes(title_text="pseudotime", row=j+1, col=i+1)
+            fig.update_yaxes(title_text=str(feature), row=j+1, col=i+1)
+
+
+    fig.update_layout(dict(height=400, width=1000,plot_bgcolor = 'white', title_text = str(path_alias)))
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey',
+                 zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
+                 showline=True, linewidth=1, linecolor='black')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey',
+                 zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
+                 showline=True, linewidth=1, linecolor='black')
+    fig.update_traces(marker=dict(size=3))
+    return fig

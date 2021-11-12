@@ -8,6 +8,8 @@ import networkx as nx
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
+from .. import _utils
+
 @nb.njit
 def nb_unique1d(ar):
     """
@@ -155,43 +157,7 @@ def detect_transition_markers(
         os.makedirs(file_path)
 
     #### Extract cells by provided nodes
-    epg_edge = adata.uns[key]["edge"]
-    epg_edge_len = adata.uns[key]["edge_len"]
-    G = nx.Graph()
-    edges_weighted = list(zip(epg_edge[:, 0], epg_edge[:, 1], epg_edge_len))
-    G.add_weighted_edges_from(edges_weighted, weight="len")
-
-    if source is None:
-        source = adata.uns[f"{key}_pseudotime_params"]["source"]
-    if target is None:
-        target = adata.uns[f"{key}_pseudotime_params"]["target"]
-    if nodes_to_include is None:
-        nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
-
-    if target is not None:
-        if nodes_to_include is None:
-            # nodes on the shortest path
-            nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
-        else:
-            assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
-            # lists of simple paths, in order from shortest to longest
-            list_paths = list(
-                nx.shortest_simple_paths(G, source=source, target=target, weight="len")
-            )
-            flag_exist = False
-            for p in list_paths:
-                if set(nodes_to_include).issubset(p):
-                    nodes_sp = p
-                    flag_exist = True
-                    break
-            if not flag_exist:
-                print(f"no path that passes {nodes_to_include} exists")
-    else:
-        nodes_sp = [source] + [v for u, v in nx.bfs_edges(G, source)]
-
-    cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
-    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include,target)
-    print("Cells are slected for Path_Source_Nodes-to-include_Target : ", path_alias)
+    cells, path_alias = _utils.get_path(adata, source, target, nodes_to_include, key)
 
     #### Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
