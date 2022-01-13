@@ -6,16 +6,19 @@ import matplotlib.pyplot as plt
 import scanpy as sc
 import itertools
 
-from ._elpigraph import learn_graph
 from sklearn.decomposition import PCA
 from scipy.spatial.qhull import _Qhull
 from shapely.geometry import Point, Polygon, MultiLineString, LineString
+from shapely.geometry.multipolygon import MultiPolygon
 from sklearn.neighbors import NearestNeighbors
+
+from ._elpigraph import learn_graph
+from ._graph_editing import _get_graph_data
 
 
 @nb.njit
 def _get_intersect_inner(a1, a2, b1, b2):
-    """ 
+    """
     Returns the point of intersection of the lines passing through a2,a1 and b2,b1.
     a1: [x, y] a point on the first line
     a2: [x, y] another point on the first line
@@ -71,8 +74,8 @@ def get_weights_lineproj(Xin, nodep, edges, cent, threshold=0.2):
 
 
 def shrink_or_swell_shapely_polygon(coords, factor=0.10, swell=False):
-    """ returns the shapely polygon which is smaller or bigger by passed factor.
-        If swell = True , then it returns bigger polygon, else smaller """
+    """returns the shapely polygon which is smaller or bigger by passed factor.
+    If swell = True , then it returns bigger polygon, else smaller"""
 
     my_polygon = Polygon(coords)
     xs = list(my_polygon.exterior.coords.xy[0])
@@ -219,10 +222,7 @@ def in_hull(points, queries):
 
 
 def add_loops(
-    X,
-    init_nodes_pos,
-    init_edges,
-    epg,
+    adata,
     min_path_len=None,
     nnodes=None,
     max_inner_fraction=0.05,
@@ -238,9 +238,15 @@ def add_loops(
     weights=None,
     plot=False,
     verbose=False,
+    key="epg",
 ):
 
     # --- Init parameters, variables
+    X = _get_graph_data(adata, key)
+    init_nodes_pos = adata.uns[key]["node_pos"]
+    init_edges = adata.uns[key]["edge"]
+    epg = nx.convert_matrix.from_scipy_sparse_matrix(adata.uns[key]["conn"])
+
     SquaredX = np.sum(X ** 2, axis=1, keepdims=1)
     part, part_dist = elpigraph.src.core.PartitionData(
         X, init_nodes_pos, 10 ** 6, SquaredX=SquaredX
@@ -424,10 +430,7 @@ def add_loops(
                     )
 
                     # prevent shapely bugs when multi-polygon is returned. Fall back to mahalanobis
-                    if (
-                        type(shrunk_cycle_2d)
-                        == shapely.geometry.multipolygon.MultiPolygon
-                    ):
+                    if type(shrunk_cycle_2d) == MultiPolygon:
                         in_shrunk_cycle = np.ones(len(X_inside), dtype=bool)
                     else:
                         shrunk_cycle_2d = np.array(shrunk_cycle_2d.exterior.coords)
@@ -580,10 +583,7 @@ def add_loops(
                     )
 
                     # prevent shapely bugs when multi-polygon is returned. Fall back to mahalanobis
-                    if (
-                        type(shrunk_cycle_2d)
-                        == shapely.geometry.multipolygon.MultiPolygon
-                    ):
+                    if type(shrunk_cycle_2d) == MultiPolygon:
                         in_shrunk_cycle = np.ones(len(X_inside), dtype=bool)
                     else:
                         shrunk_cycle_2d = np.array(shrunk_cycle_2d.exterior.coords)
