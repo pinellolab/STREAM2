@@ -96,6 +96,13 @@ def learn_graph(
     if n_jobs is None:
         n_jobs = settings.n_jobs
 
+    if "MaxNumberOfGraphCandidatesDict" not in kwargs:
+        kwargs["MaxNumberOfGraphCandidatesDict"] = {
+            "AddNode2Node": 15,
+            "BisectEdge": 5,
+            "ShrinkEdge": np.inf,
+        }
+
     if method == "principal_curve":
         dict_epg = elpigraph.computeElasticPrincipalCurve(
             X=mat,
@@ -134,6 +141,7 @@ def learn_graph(
         )[0]
 
     adata.uns["epg"] = dict()
+
     adata.uns["epg"]["node_pos"] = dict_epg["NodePositions"]
     adata.uns["epg"]["edge"] = dict_epg["Edges"][0]
     adata.uns["epg"]["params"] = {
@@ -146,6 +154,11 @@ def learn_graph(
         "epg_alpha": epg_alpha,
         "use_seed": use_seed,
     }
+    if "StoreGraphEvolution" in kwargs:
+        adata.uns["epg"]["graph_evolution"] = {
+            "all_node_pos": dict_epg["AllNodePositions"],
+            "all_edge": dict_epg["AllElasticMatrices"],
+        }
     _store_graph_attributes(adata, mat, key="epg")
 
 
