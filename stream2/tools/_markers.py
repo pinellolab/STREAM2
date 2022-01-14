@@ -4,82 +4,79 @@ import pandas as pd
 import scipy
 import multiprocessing
 import os
+import math
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
 
 @nb.njit
-def nb_unique1d(ar):
-    """
-    Numba speedup
-    """
-    ar = ar.flatten()
-    perm = ar.argsort(kind="mergesort")
-    aux = ar[perm]
-
-    mask = np.empty(aux.shape, dtype=np.bool_)
-    mask[:1] = True
-    if aux.shape[0] > 0 and aux.dtype.kind in "cfmM" and np.isnan(aux[-1]):
-        if aux.dtype.kind == "c":  # for complex all NaNs are considered equivalent
-            aux_firstnan = np.searchsorted(np.isnan(aux), True, side="left")
-        else:
-            aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
-        mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
-        mask[aux_firstnan] = True
-        mask[aux_firstnan + 1 :] = False
-    else:
-        mask[1:] = aux[1:] != aux[:-1]
-
-    imask = np.cumsum(mask) - 1
-    inv_idx = np.empty(mask.shape, dtype=np.intp)
-    inv_idx[perm] = imask
-    idx = np.append(np.nonzero(mask)[0], mask.size)
-
-    # idx      #inverse   #counts
-    return aux[mask], perm[mask], inv_idx, np.diff(idx)
+def normal_cdf(x):
+    #'Cumulative distribution function for the standard normal distribution'
+    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
 
 
 @nb.njit
-def _xicorr(X, Y):
-    """xi correlation coefficient
-    X,Y 0 dimensional np.arrays"""
-    n = X.size
-    xi = np.argsort(X, kind="quicksort")
-    Y = Y[xi]
-    _, _, b, c = nb_unique1d(Y)
-    r = np.cumsum(c)[b]
-    _, _, b, c = nb_unique1d(-Y)
-    l = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum())
+def avg_ties(X):
+    """ Same as scipy.stats.rankdata method="average" """
+    xi = np.argsort(X)
+    xi_rank = np.argsort(xi)
+    unique, _, inverse, c_ = nb_unique1d(X)
+    unique_rank_sum = np.zeros_like(unique)
+    for i0, inv in enumerate(inverse):
+        unique_rank_sum[inv] += xi_rank[i0]
+    unique_count = np.zeros_like(unique)
+    for i0, inv in enumerate(inverse):
+        unique_count[inv] += 1
+    unique_rank_mean = unique_rank_sum / unique_count
+    rank_mean = unique_rank_mean[inverse]
+    return rank_mean + 1
 
 
 @nb.njit
-def _xicorr_inner(X, Y, n):
-    """Numba fast xi correlation coefficient
-    X,Y 0 dimensional np.arrays"""
-    xi = np.argsort(X, kind="quicksort")
-    Y = Y[xi]
-    _, _, b, c = nb_unique1d(Y)
-    r = np.cumsum(c)[b]
-    _, _, b, c = nb_unique1d(-Y)
-    l = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum())
+def _xicorr_inner(x, y, n):
+    """ Translated from R https://github.com/cran/XICOR/ """
+    # ---corr
+    PI = avg_ties(x)
+    fr = avg_ties(y) / n
+    gr = avg_ties(-y) / n
+    fr = fr[np.argsort(PI, kind="mergesort")]
+
+    CU = np.mean(gr * (1 - gr))
+    A1 = np.abs(np.diff(fr)).sum() / (2 * n)
+    xi = 1 - A1 / CU
+
+    # ---pval
+    qfr = np.sort(fr)
+    ind = np.arange(n) + 1
+    ind2 = np.array([2 * n - 2 * ind[i - 1] + 1 for i in ind])
+
+    ai = np.mean(ind2 * qfr * qfr) / n
+    ci = np.mean(ind2 * qfr) / n
+    cq = np.cumsum(qfr)
+
+    m = (cq + (n - ind) * qfr) / n
+    b = np.mean(m ** 2)
+    v = (ai - 2 * b + np.square(ci)) / np.square(CU)
+
+    # sd = np.sqrt(v/n)
+    pval = 1 - normal_cdf(np.sqrt(n) * xi / np.sqrt(v))
+    return xi, pval
 
 
 @nb.njit(parallel=True)
-def _xicorr_loop_parallel(X, Y):
+def _xicorr_loop_parallel(X, y):
     """Numba fast parallel xi correlation coefficient
     X,Y 0 dimensional np.arrays"""
     n = len(X)
     corrs = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i] = _xicorr_inner(X[:, i], Y, n)
+        corrs[i] = _xicorr_inner(X[:, i], y, n)
     return corrs
 
 
 def nb_spearman(x, Y):
     """
-    Fast equivalent to 
+    Fast equivalent to
     for i in range(y.shape[1]): spearmanr(x,y[:,i]).correlation
     """
     return pearson_corr(_rankdata(x[None]), _rankdata(Y.T))
@@ -299,4 +296,3 @@ def detect_transition_markers(
         adata.uns["transition_markers"].update(dict_tg_edges)
     else:
         adata.uns["transition_markers"] = dict_tg_edges
-

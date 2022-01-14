@@ -12,7 +12,7 @@ from shapely.geometry import Point, Polygon, MultiLineString, LineString
 from shapely.geometry.multipolygon import MultiPolygon
 from sklearn.neighbors import NearestNeighbors
 
-from ._elpigraph import learn_graph
+from ._elpigraph import learn_graph, _store_graph_attributes
 from ._graph_editing import _get_graph_data
 
 
@@ -238,6 +238,7 @@ def add_loops(
     weights=None,
     plot=False,
     verbose=False,
+    inplace=False,
     key="epg",
 ):
 
@@ -682,5 +683,6 @@ def add_loops(
                 merged_nodep, merged_edges = remove_intersections(
                     merged_nodep, merged_edges
                 )
-
+    if inplace:
+        return sc.AnnData(X, obsm=adata.obsm, obs=adata.obs, uns=adata.uns)
     return new_edges, new_nodep, new_leaves, merged_nodep, merged_edges
