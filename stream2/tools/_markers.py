@@ -10,6 +10,37 @@ from statsmodels.sandbox.stats.multicomp import multipletests
 
 
 @nb.njit
+def nb_unique1d(ar):
+    """
+    Numba speedup
+    """
+    ar = ar.flatten()
+    perm = ar.argsort(kind="mergesort")
+    aux = ar[perm]
+
+    mask = np.empty(aux.shape, dtype=np.bool_)
+    mask[:1] = True
+    if aux.shape[0] > 0 and aux.dtype.kind in "cfmM" and np.isnan(aux[-1]):
+        if aux.dtype.kind == "c":  # for complex all NaNs are considered equivalent
+            aux_firstnan = np.searchsorted(np.isnan(aux), True, side="left")
+        else:
+            aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
+        mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
+        mask[aux_firstnan] = True
+        mask[aux_firstnan + 1 :] = False
+    else:
+        mask[1:] = aux[1:] != aux[:-1]
+
+    imask = np.cumsum(mask) - 1
+    inv_idx = np.empty(mask.shape, dtype=np.intp)
+    inv_idx[perm] = imask
+    idx = np.append(np.nonzero(mask)[0], mask.size)
+
+    # idx      #inverse   #counts
+    return aux[mask], perm[mask], inv_idx, np.diff(idx)
+
+
+@nb.njit
 def normal_cdf(x):
     #'Cumulative distribution function for the standard normal distribution'
     return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
@@ -69,9 +100,10 @@ def _xicorr_loop_parallel(X, y):
     X,Y 0 dimensional np.arrays"""
     n = len(X)
     corrs = np.zeros(X.shape[1])
+    pvals = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i] = _xicorr_inner(X[:, i], y, n)
-    return corrs
+        corrs[i], pvals[i] = _xicorr_inner(X[:, i], y, n)
+    return corrs, pvals
 
 
 def nb_spearman(x, Y):

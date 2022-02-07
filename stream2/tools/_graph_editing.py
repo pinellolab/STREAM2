@@ -2,30 +2,70 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
+from shapely.geometry import MultiLineString, LineString
 
-from . import _graph_loops
-from ._elpigraph import learn_graph, _store_graph_attributes
+from ._elpigraph import learn_graph, _store_graph_attributes, _get_graph_data
 
 
-def _get_graph_data(adata, key):
-    """get data matrix used to learn the graph"""
-    obsm = adata.uns[key]["params"]["obsm"]
-    layer = adata.uns[key]["params"]["layer"]
+def add_loops(
+    adata,
+    min_path_len=None,
+    nnodes=None,
+    max_inner_fraction=0.2,
+    min_node_n_points=5,
+    max_n_points=np.inf,
+    # max_empty_curve_fraction=.2,
+    min_compactness=0.5,
+    radius=None,
+    allow_same_branch=True,
+    fit_loops=True,
+    Lambda=0.02,
+    Mu=0.1,
+    weights=None,
+    plot=False,
+    verbose=False,
+    copy=False,
+    key="epg",
+):
 
-    if obsm is not None:
-        if obsm in adata.obsm:
-            mat = adata.obsm[obsm]
-        else:
-            raise ValueError(f"could not find {obsm} in `adata.obsm`")
-    elif layer is not None:
-        if layer in adata.layers:
-            mat = adata.layers[layer]
-        else:
-            raise ValueError(f"could not find {layer} in `adata.layers`")
+    # --- Init parameters, variables
+    X = _get_graph_data(adata, key)
+    init_nodes_pos = adata.uns[key]["node_pos"]
+    init_edges = adata.uns[key]["edge"]
+
+    new_edges, new_nodep, new_leaves, merged_nodep, merged_edges = elpigraph.addLoops(
+    X,
+    init_nodes_pos,
+    init_edges,
+    min_path_len=min_path_len,
+    nnodes=nnodes,
+    max_inner_fraction=max_inner_fraction,
+    min_node_n_points=min_node_n_points,
+    max_n_points=max_n_points,
+    # max_empty_curve_fraction=.2,
+    min_compactness=min_compactness,
+    radius=radius,
+    allow_same_branch=allow_same_branch,
+    fit_loops=fit_loops,
+    Lambda=Lambda,
+    Mu=Mu,
+    weights=weights,
+    plot=plot,
+    verbose=verbose,
+)
+    if new_edges is None:
+        return
     else:
-        mat = adata.X
-    return mat
-
+        if copy:
+            _adata = sc.AnnData(X, obsm=adata.obsm, obs=adata.obs, uns=adata.uns)
+            _adata.uns[key]["node_pos"] = merged_nodep
+            _adata.uns[key]["edge"] = merged_edges
+            return _adata
+        else:
+            adata.uns[key]["node_pos"] = merged_nodep
+            adata.uns[key]["edge"] = merged_edges
+            # update edge_len, conn, data projection
+            _store_graph_attributes(adata, X, key)
 
 def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
 
@@ -69,7 +109,7 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
     _edges[edges == 1] = target
     _merged_edges = np.concatenate((init_edges, _edges))
     _merged_nodep = np.concatenate((init_nodes_pos, nodep[2:]))
-    cycle_edges = _graph_loops.find_all_cycles(nx.Graph(_merged_edges.tolist()))[0]
+    cycle_edges = elpigraph.src._graph_editing.find_all_cycles(nx.Graph(_merged_edges.tolist()))[0]
 
     Mus = np.repeat(Mu, len(_merged_nodep))
     Mus[cycle_edges] = Mu / 10000
@@ -83,12 +123,12 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
     # check intersection
     if _merged_nodep.shape[1] == 2:
         intersect = not (
-            _graph_loops.MultiLineString(
-                [_graph_loops.LineString(_merged_nodep[e]) for e in _merged_edges]
+            MultiLineString(
+                [LineString(_merged_nodep[e]) for e in _merged_edges]
             ).is_simple
         )
         if intersect:
-            _merged_nodep, _merged_edges = _graph_loops.remove_intersections(
+            _merged_nodep, _merged_edges = elpigraph.src._graph_editing.remove_intersections(
                 _merged_nodep, _merged_edges
             )
 
@@ -141,3 +181,35 @@ def del_path(adata, source, target, nodes_to_include=None, key="epg"):
     mat = _get_graph_data(adata, key)
     _store_graph_attributes(adata, mat, key)
 
+
+def prune_graph(
+    adata, mode="PointNumber", collapse_par=5, trimming_radius=np.inf, inplace=False
+):
+    pg = {
+        "NodePositions": adata.uns["epg"]["node_pos"].copy(),
+        "Edges": [adata.uns["epg"]["edge"].copy()],
+    }
+    pg2 = elpigraph.CollapseBranches(
+        adata.obsm["X_dr"],
+        pg,
+        ControlPar=collapse_par,
+        Mode=mode,
+        TrimmingRadius=trimming_radius,
+    )
+    if inplace:
+        params = adata.uns["epg"]["params"]
+        learn_graph(
+            adata,
+            method=params["method"],
+            obsm=params["obsm"],
+            layer=params["layer"],
+            n_nodes=params["n_nodes"],
+            epg_lambda=params["epg_lamba"],
+            epg_mu=params["epg_mu"],
+            epg_alpha=params["epg_alpha"],
+            use_seed=False,
+            InitNodePositions=pg2["Nodes"],
+            InitEdges=pg2["Edges"],
+        )
+    else:
+        return pg2
