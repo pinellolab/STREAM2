@@ -190,7 +190,7 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
 
     # --- Init parameters, variables
     Mu = adata.uns[key]["params"]["epg_mu"]
-    Lambda = adata.uns[key]["params"]["epg_lamba"]
+    Lambda = adata.uns[key]["params"]["epg_lambda"]
     if n_nodes is None:
         n_nodes = min(20, max(8, len(init_nodes_pos) // 6))
     if weights is None:
