@@ -225,7 +225,7 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
     _edges[edges == 1] = target
     _merged_edges = np.concatenate((init_edges, _edges))
     _merged_nodep = np.concatenate((init_nodes_pos, nodep[2:]))
-    cycle_edges = elpigraph.src._graph_editing.find_all_cycles(
+    cycle_edges = elpigraph._graph_editing.find_all_cycles(
         nx.Graph(_merged_edges.tolist())
     )[0]
 
