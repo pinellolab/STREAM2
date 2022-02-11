@@ -437,7 +437,6 @@ def seed_graph(
         _store_graph_attributes(adata, X, key="seed_epg")
 
     else:
-        print("Seeding initial graph...")
         _seed_graph(
             adata,
             obsm=obsm,
@@ -630,11 +629,13 @@ def _seed_graph(
         print("Calculating minimum spanning tree...")
 
     # ---if supervised adjacency matrix option
-    if (len(paths) > 0 and label is None) or (len(paths) == 0 and label is not None):
+    if (((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None) or (
+        ((len(paths) == 0) and (len(paths_forbidden) == 0)) and label is not None
+    ):
         raise ValueError(
             "Both a label key (label: str) and cluster paths (paths: list of list) need to be provided for path-supervised initialization"
         )
-    elif len(paths) > 0 and label is not None:
+    elif ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is not None:
         (
             init_nodes_pos,
             clus_adjmat,
@@ -943,8 +944,9 @@ def _categorical_adjmat2(mat, init_nodes_pos, paths, paths_forbidden, labels, fa
     adjmat_strength = np.array(
         pd.DataFrame(dict(nx.all_pairs_shortest_path_length(graph)))
     )
-    max_shortestpath, min_shortestpath = np.nanmax(adjmat_strength), 1.0
+    min_shortestpath = 1.0
     np.fill_diagonal(adjmat_strength, min_shortestpath)
+    max_shortestpath = np.nanmax(adjmat_strength)
     adjmat_strength = adjmat_strength / max_shortestpath
     adjmat_strength[np.isnan(adjmat_strength) & (~ix_nan)] = 1.0
 

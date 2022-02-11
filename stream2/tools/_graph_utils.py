@@ -40,7 +40,7 @@ def add_loops(
     n_nodes: int, default=None
         Number of nodes in the candidate principal curves
     max_inner_fraction: float in [0,1], default=0.1
-        Maximum fraction of points inside vs outside the loop Controls how empty the loop formed with the added path should be.
+        Maximum fraction of points inside vs outside the loop (controls how empty the loop formed with the added path should be)
     min_node_n_points: int, default=1
         Minimum number of points associated to nodes of the principal curve (prevents creating paths through empty space)
     max_n_points: int, default=5% of the number of points
@@ -212,7 +212,7 @@ def _add_loops(
             _store_graph_attributes(adata, X, key)
 
 
-def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
+def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
 
     X = _get_graph_data(adata, key)
     init_nodes_pos, init_edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
@@ -220,10 +220,10 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
     # --- Init parameters, variables
     Mu = adata.uns[key]["params"]["epg_mu"]
     Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if n_nodes is None:
-        n_nodes = min(20, max(8, len(init_nodes_pos) // 6))
-    if weights is None:
-        weights = np.ones(len(X))[:, None]
+    if nnodes is None:
+        nnodes = min(16, max(6, len(init_nodes_pos) / 20))
+    if use_weights:
+        weights = adata.obs["pointweights"]
 
     SquaredX = np.sum(X ** 2, axis=1, keepdims=1)
     part, part_dist = elpigraph.src.core.PartitionData(
@@ -289,7 +289,17 @@ def add_path(adata, source, target, n_nodes=None, weights=None, key="epg"):
     _store_graph_attributes(adata, X, key)
 
 
-def del_path(adata, source, target, nodes_to_include=None, key="epg"):
+def del_path(
+    adata, source, target, nodes_to_include=None, use_weights=False, key="epg"
+):
+
+    X = _get_graph_data(adata, key)
+
+    # --- Init parameters, variables
+    Mu = adata.uns[key]["params"]["epg_mu"]
+    Lambda = adata.uns[key]["params"]["epg_lambda"]
+    if use_weights:
+        weights = adata.obs["pointweights"]
 
     # --- get path to remove
     epg_edge = adata.uns[key]["edge"]
@@ -327,9 +337,23 @@ def del_path(adata, source, target, nodes_to_include=None, key="epg"):
         ~np.isin(range(len(adata.uns[key]["node_pos"])), isolates)
     ]
 
+    # --- get nodep, edges, create new graph with added loop
+    nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
+
+    cycle_edges = elpigraph._graph_editing.find_all_cycles(nx.Graph(edges.tolist()))[0]
+
+    Mus = np.repeat(Mu, len(nodep))
+    Mus[cycle_edges] = Mu / 10000
+    ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
+        edges, Lambdas=Lambda, Mus=Mus
+    )
+    newnodep, _, _, _, _, _, _ = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+        X, nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
+    )
+
     # update edge_len, conn, data projection
-    mat = _get_graph_data(adata, key)
-    _store_graph_attributes(adata, mat, key)
+    adata.uns["epg"]["node_pos"] = newnodep
+    _store_graph_attributes(adata, X, key)
 
 
 def prune_graph(
