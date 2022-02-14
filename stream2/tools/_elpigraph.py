@@ -70,10 +70,10 @@ def learn_graph(
         for part in adata.obs["partition"].unique():
 
             if part not in partitions:
-                p_adata = _subset_adata(adata, part, "epg")
+                p_adata = _subset_adata(adata, part)
             else:
                 if use_seed:
-                    p_adata = _subset_adata(adata, part, "seed_epg")
+                    p_adata = _subset_adata(adata, part)
                     if len(p_adata.uns["seed_epg"]["node_pos"]) < n_nodes:
                         nnodes = n_nodes
                     else:
@@ -392,7 +392,7 @@ def seed_graph(
 
         for part in adata.obs["partition"].unique():
             if type(use_partition) is list:
-                p_adata = _subset_adata(adata, part, "seed_epg")
+                p_adata = _subset_adata(adata, part)
             else:
                 p_adata = adata[adata.obs["partition"] == part].copy()
 
@@ -1000,14 +1000,16 @@ def _get_graph_data(adata, key):
     return mat
 
 
-def _subset_adata(adata, part, key):
+def _subset_adata(adata, part):
     p_adata = adata[adata.obs["partition"] == part].copy()
-    p_adata.uns[key] = deepcopy(adata.uns[key])
-    p_adata.uns[key]["node_pos"] = p_adata.uns[key]["node_pos"][
-        p_adata.uns[key]["node_partition"] == part
-    ]
-    p_adata.uns[key]["edge"] = p_adata.uns[key]["edge"][
-        p_adata.uns[key]["edge_partition"] == part
-    ]
-    p_adata.uns[key]["edge"] -= p_adata.uns[key]["edge"].min()
+    for key in ["seed_epg", "epg"]:
+        if key in p_adata.uns:
+            p_adata.uns[key] = deepcopy(adata.uns[key])
+            p_adata.uns[key]["node_pos"] = p_adata.uns[key]["node_pos"][
+                p_adata.uns[key]["node_partition"] == part
+            ]
+            p_adata.uns[key]["edge"] = p_adata.uns[key]["edge"][
+                p_adata.uns[key]["edge_partition"] == part
+            ]
+            p_adata.uns[key]["edge"] -= p_adata.uns[key]["edge"].min()
     return p_adata

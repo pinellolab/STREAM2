@@ -10,5 +10,6 @@ from ._graph_utils import (
     add_loops,
     prune_graph,
     get_weights,
+    get_component,
     find_disconnected_components,
 )

@@ -76,7 +76,7 @@ def add_loops(
         num_edges = 0
         for part in adata.obs["partition"].unique():
 
-            p_adata = _subset_adata(adata, part, key)
+            p_adata = _subset_adata(adata, part)
             if part in partitions:
                 _add_loops(
                     p_adata,
@@ -463,3 +463,12 @@ def get_weights(
     adata.obs["pointweights"] = elpigraph.utils.getWeights(
         mat, bandwidth, griddelta, exponent, method, **kwargs
     )
+
+
+def get_component(adata, component):
+    sadata = _subset_adata(adata, component)
+    for key in ["seed_epg", "epg"]:
+        if key in sadata.uns:
+            X = _get_graph_data(sadata, "epg")
+            _store_graph_attributes(sadata, X, key)
+    return sadata
