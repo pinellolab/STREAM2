@@ -199,10 +199,10 @@ def detect_transition_markers(
     ix_pos = diff_initial_final > 0
     logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
     logfc[ix_pos] = np.log2(
-        np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0))
+        (np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
         / (
             np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0))
-            + diff_initial_final[ix_pos] / 1000.0
+            + 0.01
         )
     )
 

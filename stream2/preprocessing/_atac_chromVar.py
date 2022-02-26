@@ -44,7 +44,7 @@ def file2anndata(indir):
     adata=ad.read_csv(filename = indir+'/zscores_renamed.csv', delimiter = '\t')
     return adata
 
-def atac_chromVar(adata, species, genome, feature, n_jobs=1, env = 'qz_stream_atac', outdir='./stream2_atac'):      
+def atac_chromVar(adata, species, genome, feature, n_jobs=1, env = 'stream2_chromVar', outdir='./stream2_atac'):      
     # save files from anndata
     anndata2file(adata, outdir)
     
