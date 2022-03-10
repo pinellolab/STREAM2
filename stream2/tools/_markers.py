@@ -185,6 +185,7 @@ def detect_transition_markers(
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
     df_cells_sort = df_cells.iloc[np.argsort(pseudotime_cells)]
+    pseudotime_cells_sort = pseudotime_cells[np.argsort(pseudotime_cells)]
 
     dict_tg_edges = dict()
 
@@ -223,11 +224,11 @@ def detect_transition_markers(
             index=df_cells_sort.columns[ix_cutoff],
         )
         df_stat_pval_qval["stat"] = nb_spearman(
-            np.array(pseudotime_cells), np.array(df_cells_sort.iloc[:, ix_cutoff])
+            np.array(pseudotime_cells_sort), np.array(df_cells_sort.iloc[:, ix_cutoff])
         )
         df_stat_pval_qval["logfc"] = logfc
         df_stat_pval_qval["pval"] = p_val(
-            df_stat_pval_qval["stat"], len(pseudotime_cells)
+            df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
         )
 
         p_values = df_stat_pval_qval["pval"]
