@@ -143,12 +143,16 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
     df_pos = df_marker_detection.loc[:, ind_pos]
 
     if ind_neg.sum() >0:
+        print('Matrix contains negative values...')
+        ### genes with negative values
         minValues = df_neg.apply(lambda x: np.percentile(x[x < 0], 100-percentile_expr), axis=0)
         maxValues = df_neg.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
         for i in range(df_neg.shape[1]):
-            df_neg.iloc[:,i][df_neg.iloc[:,i] < minValues[i]] = minValues[i]
-            df_neg.iloc[:,i][df_neg.iloc[:,i] > maxValues[i]] = maxValues[i]
-            df_neg.iloc[:,i] = df_neg.iloc[:,i] - minValues[i]
+            df_gene = df_neg.iloc[:,i].copy(deep=True)
+            df_gene[df_gene < minValues[i]] = minValues[i]
+            df_gene[df_gene > maxValues[i]] = maxValues[i]
+            df_neg.iloc[:,i] = df_gene-minValues[i]
+        df_neg = df_neg.copy(deep=True)
         maxValues = df_neg.max(axis=0)
         df_neg_scaled = df_neg / maxValues[:,None].T
     else:
@@ -173,6 +177,7 @@ def detect_transition_markers(
     percentile_expr=95,
     n_jobs=1,
     min_num_cells=5,
+    fc_cutoff=1,
     key="epg",
 ):
 
@@ -239,7 +244,7 @@ def detect_transition_markers(
         )
     )
 
-    ix_cutoff = np.array(logfc > 1)
+    ix_cutoff = np.array(logfc > fc_cutoff)
 
     if sum(ix_cutoff) == 0:
         print(

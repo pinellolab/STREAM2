@@ -37,9 +37,9 @@ def file2anndata(indir, scale):
         df_zscores_scaled = preprocessing.scale(df_zscores,axis=1)
         df_zscores_scaled = pd.DataFrame(df_zscores_scaled,index=df_zscores.index,columns=df_zscores.columns)
         df_zscores_scaled.to_csv(os.path.join(indir,'zscores_scaled.tsv.gz'),sep = '\t',compression='gzip')
-        motif = df_zscores_scaled
+        motifs = df_zscores_scaled
     else:
-        motif = df_zscores
+        motifs = df_zscores
     
     print('Rename TF names...')
     TFs = motifs.index.tolist()
