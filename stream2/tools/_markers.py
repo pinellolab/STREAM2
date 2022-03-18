@@ -136,9 +136,33 @@ def p_val(r, n):
 
 
 def scale_marker_expr(df_marker_detection, percentile_expr):
-    maxValues = df_marker_detection.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
-    df_marker_detection_scaled = df_marker_detection / maxValues[:,None].T
-    df_marker_detection_scaled[df_marker_detection_scaled > 1] = 1
+    ### optimal version for STREAM1
+    ind_neg = df_marker_detection.min() < 0
+    ind_pos = df_marker_detection.min() >= 0
+    df_neg = df_marker_detection.loc[:, ind_neg]
+    df_pos = df_marker_detection.loc[:, ind_pos]
+
+    if ind_neg.sum() >0:
+        minValues = df_neg.apply(lambda x: np.percentile(x[x < 0], 100-percentile_expr), axis=0)
+        maxValues = df_neg.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
+        for i in range(df_neg.shape[1]):
+            df_neg.iloc[:,i][df_neg.iloc[:,i] < minValues[i]] = minValues[i]
+            df_neg.iloc[:,i][df_neg.iloc[:,i] > maxValues[i]] = maxValues[i]
+            df_neg.iloc[:,i] = df_neg.iloc[:,i] - minValues[i]
+        maxValues = df_neg.max(axis=0)
+        df_neg_scaled = df_neg / maxValues[:,None].T
+    else:
+        df_neg_scaled = pd.DataFrame(index = df_neg.index)
+
+    if ind_pos.sum() >0:
+        maxValues = df_pos.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
+        df_pos_scaled = df_pos / maxValues[:,None].T
+        df_pos_scaled[df_pos_scaled > 1] = 1
+    else:
+        df_pos_scaled = pd.DataFrame(index = df_pos.index)
+
+    df_marker_detection_scaled = pd.concat([df_neg_scaled, df_pos_scaled], axis=1)
+
     return df_marker_detection_scaled
 
 def detect_transition_markers(
@@ -197,6 +221,14 @@ def detect_transition_markers(
     )
     diff_initial_final = np.abs(values_final.mean(axis=0) - values_initial.mean(axis=0))
 
+    ### original expression
+    df_cells_ori = deepcopy(df_marker_detection.loc[cells])
+    df_cells_sort_ori = df_cells_ori.iloc[np.argsort(pseudotime_cells)]
+    values_initial_ori, values_final_ori = (
+        df_cells_sort_ori.iloc[id_initial, :],
+        df_cells_sort_ori.iloc[id_final, :],
+    )
+
     ix_pos = diff_initial_final > 0
     logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
     logfc[ix_pos] = np.log2(
@@ -219,8 +251,8 @@ def detect_transition_markers(
 
     else:
         df_stat_pval_qval = pd.DataFrame(
-            np.full((sum(ix_cutoff), 4), np.nan),
-            columns=["stat", "logfc", "pval", "qval"],
+            np.full((sum(ix_cutoff), 8), np.nan),
+            columns=["stat", "logfc", "pval", "qval",'initial_mean','final_mean','initial_mean_ori','final_mean_ori'],
             index=df_cells_sort.columns[ix_cutoff],
         )
         df_stat_pval_qval["stat"] = nb_spearman(
@@ -234,6 +266,10 @@ def detect_transition_markers(
         p_values = df_stat_pval_qval["pval"]
         q_values = multipletests(p_values, method="fdr_bh")[1]
         df_stat_pval_qval["qval"] = q_values
+        df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
+        df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
+        df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
 
