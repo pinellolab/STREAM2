@@ -12,4 +12,6 @@ from ._graph_utils import (
     get_weights,
     get_component,
     find_disconnected_components,
+    ordinal_knn,
+    smooth_ordinal_labels,
 )

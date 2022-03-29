@@ -472,3 +472,75 @@ def get_component(adata, component):
             X = _get_graph_data(sadata, "epg")
             _store_graph_attributes(sadata, X, key)
     return sadata
+
+
+def ordinal_knn(
+    adata,
+    ordinal_label,
+    obsm="X_pca",
+    layer=None,
+    n_neighbors=15,
+    n_natural=1,
+    metric="cosine",
+    method="guide",
+    return_sparse=False,
+    stages=None
+):
+
+    if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
+        raise ValueError("Only one of `layer` and `obsm` can be used")
+    elif obsm is not None:
+        if obsm in adata.obsm:
+            mat = adata.obsm[obsm]
+        else:
+            raise ValueError(f"could not find {obsm} in `adata.obsm`")
+    elif layer is not None:
+        if layer in adata.layers:
+            mat = adata.layers[layer]
+        else:
+            raise ValueError(f"could not find {layer} in `adata.layers`")
+    else:
+        mat = adata.X
+
+    out = elpigraph.utils.supervised_knn(
+        mat,
+        stages_labels=adata.obs[ordinal_label],
+        stages=stages,
+        method=method,
+        n_neighbors=n_neighbors,
+        n_natural=n_natural,
+        m=metric,
+        return_sparse=return_sparse,
+    )
+
+    if return_sparse:
+        return out
+    else:
+        knn_dists, knn_idx = out
+        return knn_dists, knn_idx
+
+
+def smooth_ordinal_labels(adata, root, ordinal_label, obsm="X_pca",layer=None,n_neighbors=15,
+n_natural=1, metric='euclidean',method='guide',stages=None,):
+
+    if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
+        raise ValueError("Only one of `layer` and `obsm` can be used")
+    elif obsm is not None:
+        if obsm in adata.obsm:
+            mat = adata.obsm[obsm]
+        else:
+            raise ValueError(f"could not find {obsm} in `adata.obsm`")
+    elif layer is not None:
+        if layer in adata.layers:
+            mat = adata.layers[layer]
+        else:
+            raise ValueError(f"could not find {layer} in `adata.layers`")
+    else:
+        mat = adata.X
+    
+    g=elpigraph.utils.supervised_knn(mat,stages_labels=adata.obs[ordinal_label],
+                                    stages=stages,n_natural=n_natural,
+                                    n_neighbors=n_neighbors,m=metric,method=method,
+                                    return_sparse=True)
+
+    adata.obs['ps']=elpigraph.utils.geodesic_pseudotime(mat,n_neighbors,root=root,g=g)

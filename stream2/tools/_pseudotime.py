@@ -63,7 +63,7 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
             )
         )
 
-    cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
+    cells = np.isin(adata.obs[f"{key}_node_id"], nodes_sp)
     id_edges_cell = adata.obs.loc[cells, f"{key}_edge_id"].tolist()
     edges_cell = adata.uns[key]["edge"][id_edges_cell, :]
     len_edges_cell = adata.uns[key]["edge_len"][id_edges_cell]

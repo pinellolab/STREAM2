@@ -26,6 +26,9 @@ def learn_graph(
     use_partition=False,
     use_weights=False,
     n_jobs=None,
+    ordinal_labels=None,
+    ordinal_supervision_strength=1,
+    ordinal_root_point=None,
     **kwargs,
 ):
     """Learn principal graph
@@ -63,6 +66,8 @@ def learn_graph(
             partitions = use_partition
         else:
             raise ValueError("use_partition should be a bool or a list of partitions")
+        if ordinal_labels is not None:
+            raise ValueError("use_partition can't be used together with ordinal_labels")
 
         merged_nodep = []
         merged_edges = []
@@ -126,6 +131,9 @@ def learn_graph(
             epg_alpha=epg_alpha,
             use_seed=use_seed,
             use_weights=use_weights,
+            ordinal_labels=ordinal_labels,
+            ordinal_supervision_strength=ordinal_supervision_strength,
+            ordinal_root_point=ordinal_root_point,
             n_jobs=n_jobs,
             **kwargs,
         )
@@ -142,6 +150,9 @@ def _learn_graph(
     epg_alpha=0.02,
     use_seed=True,
     use_weights=False,
+    ordinal_labels=None,
+    ordinal_supervision_strength=1,
+    ordinal_root_point=None,
     n_jobs=None,
     **kwargs,
 ):
@@ -230,6 +241,11 @@ def _learn_graph(
         weights = np.array(adata.obs["pointweights"]).reshape((-1, 1))
     else:
         weights = None
+
+    if ordinal_labels is not None:
+        kwargs["pseudotime"] = ordinal_labels
+        kwargs["pseudotimeLambda"] = ordinal_supervision_strength
+        kwargs["FixNodesAtPoints"] = [ordinal_root_point]
 
     if method == "principal_curve":
         dict_epg = elpigraph.computeElasticPrincipalCurve(
