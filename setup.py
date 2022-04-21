@@ -9,9 +9,10 @@ setup(
     name='stream2',
     version='0.1a',
     author='Huidong Chen',
-    athor_email='huidong.chen AT mgh DOT harvard DOT edu',
+    athor_email='hd7chen AT gmail DOT com',
     license='BSD',
-    description='STREAM2: Fast, scalable, and interactive trajectory analysis of single-cell omics data',
+    description="STREAM2: Fast and scalable trajectory analysis"
+    "of single-cell omics data",
     long_description=Path('README.md').read_text('utf-8'),
     long_description_content_type="text/markdown",
     url='https://github.com/pinellolab/STREAM2',
@@ -23,6 +24,7 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        l.strip() for l in Path('requirements.txt').read_text('utf-8').splitlines()
+        p.strip()
+        for p in Path('requirements.txt').read_text('utf-8').splitlines()
     ],
 )
