@@ -197,17 +197,21 @@ def seed_graph(
     damping: `float`, optional (default: 0.75)
         Damping factor (between 0.5 and 1) for affinity propagation.
     pref_perc: `int`, optional (default: 50)
-        Preference percentile (between 0 and 100). The percentile of the input similarities for affinity propagation.
+        Preference percentile (between 0 and 100).
+        The percentile of the input similarities for affinity propagation.
     n_clusters: `int`, optional (default: 10)
-        Number of clusters (only valid once 'clustering' is specificed as 'sc' or 'kmeans').
+        Number of clusters
+        Only valid when 'clustering' is specificed as 'sc' or 'kmeans').
     max_n_clusters: `int`, optional (default: 200)
         The allowed maximum number of clusters for 'ap'.
     n_neighbors: `int`, optional (default: 50)
         The number of neighbor cells used for spectral clustering.
     nb_pct: `float`, optional (default: None)
-        The percentage of neighbor cells (when sepcified, it will overwrite n_neighbors).
+        The percentage of neighbor cells.
+        When sepcified, it will overwrite n_neighbors.
     use_vis: `bool`, optional (default: False)
-        If True, the manifold learnt from st.plot_visualization_2D() will replace the manifold learnt from st.dimension_reduction().
+        If True, the manifold learnt from st.plot_visualization_2D()
+        will replace the manifold learnt from st.dimension_reduction().
         The principal graph will be learnt in the new manifold.
     paths: list of lists, optional (default: [])
         Paths between categorical labels used for supervised MST initialization
@@ -222,21 +226,27 @@ def seed_graph(
     adata.obs: `pandas.core.frame.DataFrame` (`adata.obs`)
         Update adata.obs with adding the columns of
         current root_node_pseudotime and removing the previous ones.
-    clustering: `pandas.core.series.Series` (`adata.obs['clustering']`,dtype `str`)
-        Array of dim (number of samples) that stores the clustering labels ('0', '1', …) for each cell.      
+    clustering: `pd.Series` (`adata.obs['clustering']`,dtype `str`)
+        Array of dim (number of samples)
+        that stores the clustering labels ('0', '1', …) for each cell.
     epg : `networkx.classes.graph.Graph` (`adata.uns['epg']`)
         Elastic principal graph structure. It contains node attributes ('pos')
     flat_tree : `networkx.classes.graph.Graph` (`adata.uns['flat_tree']`)
-        An abstract of elastic principle graph structure by only keeping leaf nodes and branching nodes. 
-        It contains node attribtutes ('pos','label') and edge attributes ('nodes','id','len','color').
+        An abstract of elastic principle graph structure
+        by only keeping leaf nodes and branching nodes.
+        It contains node attribtutes ('pos','label') and edge attributes
+        ('nodes','id','len','color').
     seed_epg : `networkx.classes.graph.Graph` (`adata.uns['epg']`)
         Store seeded elastic principal graph structure
     seed_flat_tree : `networkx.classes.graph.Graph` (`adata.uns['flat_tree']`)
         Store seeded flat_tree
     Notes
     -------
-    The default procedure is fast and good enough when seeding structure in low-dimensional space.
-    when seeding structure in high-dimensional space, it's strongly recommended to use 'infer_initial_structure' to get the initial node positions and edges
+    The default procedure is fast and good enough
+    when seeding structure in low-dimensional space.
+    when seeding structure in high-dimensional space,
+    it's strongly recommended to use 'infer_initial_structure'
+    to get the initial node positions and edges
     """
 
     print("Seeding initial elastic principal graph...")
@@ -273,9 +283,11 @@ def seed_graph(
         ).fit(mat)
         # ap = AffinityPropagation(damping=damping).fit(mat)
         if ap.cluster_centers_.shape[0] > max_n_clusters:
-            print("The number of clusters is " + str(ap.cluster_centers_.shape[0]))
+            print("The number of clusters is "
+                  + str(ap.cluster_centers_.shape[0]))
             print(
-                "Too many clusters are generated, please lower pref_perc or increase damping and retry it"
+                "Too many clusters are generated, "
+                "please lower pref_perc or increase damping and retry it"
             )
             return
         cluster_labels = ap.labels_
@@ -298,7 +310,8 @@ def seed_graph(
             )
     elif clustering == "kmeans":
         print("K-Means clustering ...")
-        kmeans = KMeans(n_clusters=n_clusters, init="k-means++", random_state=42).fit(
+        kmeans = KMeans(
+            n_clusters=n_clusters, init="k-means++", random_state=42).fit(
             mat
         )
         cluster_labels = kmeans.labels_
@@ -311,9 +324,12 @@ def seed_graph(
     print("Calculating minimum spanning tree...")
 
     # ---if supervised adjacency matrix option
-    if (len(paths) > 0 and labels is None) or (len(paths) == 0 and labels is not None):
+    if (len(paths) > 0 and labels is None) \
+       or (len(paths) == 0 and labels is not None):
         raise ValueError(
-            "Both a label key (labels: str) and cluster paths (paths: list of list) need to be provided for path-supervised initialization"
+            "Both a label key (labels: str) and "
+            "cluster paths (paths: list of list) need to be provided "
+            "for path-supervised initialization"
         )
     elif len(paths) > 0 and labels is not None:
         init_nodes_pos, clus_adjmat = _categorical_adjmat(
@@ -392,7 +408,8 @@ def _store_graph_attributes(adata, mat, key):
 def _get_branch_id(adata, key="epg"):
     """ add adata.obs['branch_id'] """
     # get branches
-    net = elpigraph.src.graphs.ConstructGraph({"Edges": [adata.uns[key]["edge"]]})
+    net = elpigraph.src.graphs.ConstructGraph(
+        {"Edges": [adata.uns[key]["edge"]]})
     branches = elpigraph.src.graphs.GetSubGraph(net, "branches")
     _dict_branches = {
         (b[0], b[-1]): b for i, b in enumerate(branches)
@@ -424,11 +441,12 @@ def _get_branch_id(adata, key="epg"):
     pd.options.mode.chained_assignment = "warn"
 
 
-#############################################
-### Categorical MST initialization utils ####
-#############################################
+########################################
+# Categorical MST initialization utils #
+########################################
 
 
+<<<<<<< HEAD
 def _get_partition_modes(mat, init_nodes_pos, labels):
     """ Return most frequent label assigned to each node """
     labels = np.array(labels)
@@ -445,8 +463,18 @@ def _get_partition_modes(mat, init_nodes_pos, labels):
 def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
     """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
     num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
+=======
+def _get_labels_adjmat(labels_u, labels_ignored, paths):
+    """Create adjmat given labels and paths.
+    labels_ignored are connected to all other labels
+    """
+
+    num_labels = {s: i
+                  for i, s in enumerate(np.append(labels_u, labels_ignored))}
+>>>>>>> main
     adjmat = np.zeros(
-        (len(labels_u) + len(labels_ignored), len(labels_u) + len(labels_ignored)),
+        (len(labels_u) + len(labels_ignored),
+         len(labels_u) + len(labels_ignored)),
         dtype=int,
     )
 
@@ -460,6 +488,7 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
                 num_labels[p[i + 1]], num_labels[p[i]]
             ] = 1
 
+<<<<<<< HEAD
     # allow unspecified clusters to connect to all other clusters
     for l in labels_ignored:
         adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 1
@@ -470,6 +499,11 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
             adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
                 num_labels[p[i + 1]], num_labels[p[i]]
             ] = 0
+=======
+    for j in labels_ignored:
+        adjmat[num_labels[j]] = adjmat[:, num_labels[j]] = 1
+    np.fill_diagonal(adjmat, 1)
+>>>>>>> main
 
     return adjmat, num_labels
 
@@ -489,32 +523,51 @@ def _get_clus_adjmat(adjmat, num_modes, n_clusters):
     return adjmat_clus
 
 
+<<<<<<< HEAD
 def _categorical_adjmat(
     mat, init_nodes_pos, paths, paths_forbidden, labels, n_neighbors=10
 ):
     """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
+=======
+def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
+    """ Main function, create categorical adjmat
+    given node positions, cluster paths, point labels
+    """
+>>>>>>> main
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
     # label adjacency matrix
+<<<<<<< HEAD
     adjmat, num_labels = _get_labels_adjmat(
         labels_u, labels_ignored, paths, paths_forbidden
+=======
+    adjmat, num_labels = _get_labels_adjmat(labels_u, labels_ignored, paths)
+    # assign label to points
+    dis, ind = (
+        NearestNeighbors(
+            n_neighbors=n_neighbors).fit(mat).kneighbors(init_nodes_pos)
+>>>>>>> main
     )
     # assign label to nodes
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
     num_modes = np.array([num_labels[m] for m in modes])
 
-    # add centroids if necessary to prevent bug (if some label has no kmean assigned to it)
+    # add centroids if necessary to prevent bug
+    # (if some label has no kmean assigned to it)
     labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(
-            f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
+            f"Found label(s) {labels_miss} with no representative node."
+            "Adding label centroid(s) as node(s)"
         )
-        centroids = np.vstack([mat[labels == s].mean(axis=0) for s in labels_miss])
+        centroids = np.vstack(
+            [mat[labels == s].mean(axis=0) for s in labels_miss])
         init_nodes_pos = np.vstack((init_nodes_pos, centroids))
         modes = np.hstack((modes, labels_miss))
         num_modes = np.array([num_labels[m] for m in modes])
 
     # nodes adjacency matrix
-    clus_adjmat = _get_clus_adjmat(adjmat, num_modes, n_clusters=len(init_nodes_pos))
+    clus_adjmat = _get_clus_adjmat(
+        adjmat, num_modes, n_clusters=len(init_nodes_pos))
     return init_nodes_pos, clus_adjmat
