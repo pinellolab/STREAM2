@@ -3,9 +3,6 @@
 import numpy as np
 import networkx as nx
 
-<<<<<<< HEAD
-def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg"):
-=======
 
 def infer_pseudotime(
     adata,
@@ -14,7 +11,6 @@ def infer_pseudotime(
     nodes_to_include=None,
     key="epg"
 ):
->>>>>>> main
     """Infer pseudotime
     Parameters
     ----------

@@ -446,24 +446,6 @@ def _get_branch_id(adata, key="epg"):
 ########################################
 
 
-<<<<<<< HEAD
-def _get_partition_modes(mat, init_nodes_pos, labels):
-    """ Return most frequent label assigned to each node """
-    labels = np.array(labels)
-    part = elpigraph.src.core.PartitionData(
-        mat, init_nodes_pos, 10 ** 6, np.sum(mat ** 2, axis=1, keepdims=1)
-    )[0].flatten()
-    modes = np.empty(len(init_nodes_pos), dtype=labels.dtype)
-
-    for i in range(len(init_nodes_pos)):
-        modes[i] = scipy.stats.mode(labels[part == i]).mode[0]
-    return modes
-
-
-def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
-    """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
-    num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
-=======
 def _get_labels_adjmat(labels_u, labels_ignored, paths):
     """Create adjmat given labels and paths.
     labels_ignored are connected to all other labels
@@ -471,7 +453,6 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths):
 
     num_labels = {s: i
                   for i, s in enumerate(np.append(labels_u, labels_ignored))}
->>>>>>> main
     adjmat = np.zeros(
         (len(labels_u) + len(labels_ignored),
          len(labels_u) + len(labels_ignored)),
@@ -488,22 +469,9 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths):
                 num_labels[p[i + 1]], num_labels[p[i]]
             ] = 1
 
-<<<<<<< HEAD
-    # allow unspecified clusters to connect to all other clusters
-    for l in labels_ignored:
-        adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 1
-
-    # remove forbidden connections given from paths_forbidden
-    for p in paths_forbidden:
-        for i in range(len(p) - 1):
-            adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
-                num_labels[p[i + 1]], num_labels[p[i]]
-            ] = 0
-=======
     for j in labels_ignored:
         adjmat[num_labels[j]] = adjmat[:, num_labels[j]] = 1
     np.fill_diagonal(adjmat, 1)
->>>>>>> main
 
     return adjmat, num_labels
 
@@ -523,31 +491,19 @@ def _get_clus_adjmat(adjmat, num_modes, n_clusters):
     return adjmat_clus
 
 
-<<<<<<< HEAD
-def _categorical_adjmat(
-    mat, init_nodes_pos, paths, paths_forbidden, labels, n_neighbors=10
-):
-    """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
-=======
 def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
     """ Main function, create categorical adjmat
     given node positions, cluster paths, point labels
     """
->>>>>>> main
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
     # label adjacency matrix
-<<<<<<< HEAD
-    adjmat, num_labels = _get_labels_adjmat(
-        labels_u, labels_ignored, paths, paths_forbidden
-=======
     adjmat, num_labels = _get_labels_adjmat(labels_u, labels_ignored, paths)
     # assign label to points
     dis, ind = (
         NearestNeighbors(
             n_neighbors=n_neighbors).fit(mat).kneighbors(init_nodes_pos)
->>>>>>> main
     )
     # assign label to nodes
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
