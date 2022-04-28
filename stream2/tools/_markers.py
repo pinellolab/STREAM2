@@ -94,18 +94,6 @@ def _xicorr_inner(x, y, n):
     return xi, pval
 
 
-@nb.njit
-def _xicorr_v2(X, Y, n):
-    """xi correlation coefficient"""
-    xi = np.argsort(X, kind="quicksort")
-    Y = Y[xi]
-    _, _, b, c = nb_unique1d(Y)
-    r = np.cumsum(c)[b]
-    _, _, b, c = nb_unique1d(-Y)
-    l = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum()), np.nan
-
-
 @nb.njit(parallel=True)
 def _xicorr_loop_parallel(X, y):
     """Numba fast parallel xi correlation coefficient
@@ -114,7 +102,7 @@ def _xicorr_loop_parallel(X, y):
     corrs = np.zeros(X.shape[1])
     pvals = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i], pvals[i] = _xicorr_v2(X[:, i], y, n)
+        corrs[i], pvals[i] = _xicorr_inner(X[:, i], y, n)
     return corrs, pvals
 
 
@@ -322,9 +310,10 @@ def detect_transition_markers(
                 df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
             )
         elif method == "xi":
+            ### /!\ dont use df_cells_sort and pseudotime_cells_sort, breaks xicorr
             res = _xicorr_loop_parallel(
-                np.array(df_cells_sort.iloc[:, ix_cutoff]),
-                np.array(pseudotime_cells_sort),
+                np.array(df_cells.iloc[:, ix_cutoff]),
+                np.array(pseudotime_cells),
             )
             df_stat_pval_qval["stat"] = res[0]
             df_stat_pval_qval["pval"] = res[1]
