@@ -2,9 +2,9 @@ import numpy as np
 import numba as nb
 import pandas as pd
 import scipy
-import multiprocessing
 import os
 import math
+from .. import _utils
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
@@ -94,6 +94,18 @@ def _xicorr_inner(x, y, n):
     return xi, pval
 
 
+@nb.njit
+def _xicorr_v2(X, Y, n):
+    """xi correlation coefficient"""
+    xi = np.argsort(X, kind="quicksort")
+    Y = Y[xi]
+    _, _, b, c = nb_unique1d(Y)
+    r = np.cumsum(c)[b]
+    _, _, b, c = nb_unique1d(-Y)
+    l = np.cumsum(c)[b]
+    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum()), np.nan
+
+
 @nb.njit(parallel=True)
 def _xicorr_loop_parallel(X, y):
     """Numba fast parallel xi correlation coefficient
@@ -102,7 +114,7 @@ def _xicorr_loop_parallel(X, y):
     corrs = np.zeros(X.shape[1])
     pvals = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i], pvals[i] = _xicorr_inner(X[:, i], y, n)
+        corrs[i], pvals[i] = _xicorr_v2(X[:, i], y, n)
     return corrs, pvals
 
 
@@ -162,39 +174,53 @@ def p_val(r, n):
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
-def scale_marker_expr(params):
-    df_marker_detection = params[0]
-    marker = params[1]
-    percentile_expr = params[2]
-    marker_values = df_marker_detection[marker].copy()
-    if min(marker_values) < 0:
-        min_marker_values = np.percentile(
-            marker_values[marker_values < 0], 100 - percentile_expr
+def scale_marker_expr(df_marker_detection, percentile_expr):
+    ### optimal version for STREAM1
+    ind_neg = df_marker_detection.min() < 0
+    ind_pos = df_marker_detection.min() >= 0
+    df_neg = df_marker_detection.loc[:, ind_neg]
+    df_pos = df_marker_detection.loc[:, ind_pos]
+
+    if ind_neg.sum() > 0:
+        print("Matrix contains negative values...")
+        ### genes with negative values
+        minValues = df_neg.apply(
+            lambda x: np.percentile(x[x < 0], 100 - percentile_expr), axis=0
         )
-        marker_values[marker_values < min_marker_values] = min_marker_values
-        max_marker_values = np.percentile(
-            marker_values[marker_values > 0], percentile_expr
+        maxValues = df_neg.apply(
+            lambda x: np.percentile(x[x > 0], percentile_expr), axis=0
         )
-        marker_values[marker_values > max_marker_values] = max_marker_values
-        marker_values = marker_values - min(marker_values)
+        for i in range(df_neg.shape[1]):
+            df_gene = df_neg.iloc[:, i].copy(deep=True)
+            df_gene[df_gene < minValues[i]] = minValues[i]
+            df_gene[df_gene > maxValues[i]] = maxValues[i]
+            df_neg.iloc[:, i] = df_gene - minValues[i]
+        df_neg = df_neg.copy(deep=True)
+        maxValues = df_neg.max(axis=0)
+        df_neg_scaled = df_neg / maxValues[:, None].T
     else:
-        max_marker_values = np.percentile(
-            marker_values[marker_values > 0], percentile_expr
+        df_neg_scaled = pd.DataFrame(index=df_neg.index)
+
+    if ind_pos.sum() > 0:
+        maxValues = df_pos.apply(
+            lambda x: np.percentile(x[x > 0], percentile_expr), axis=0
         )
-        marker_values[marker_values > max_marker_values] = max_marker_values
-    marker_values = marker_values / max_marker_values
-    return marker_values
+        df_pos_scaled = df_pos / maxValues[:, None].T
+        df_pos_scaled[df_pos_scaled > 1] = 1
+    else:
+        df_pos_scaled = pd.DataFrame(index=df_pos.index)
+
+    df_marker_detection_scaled = pd.concat([df_neg_scaled, df_pos_scaled], axis=1)
+
+    return df_marker_detection_scaled
 
 
 def detect_transition_markers(
     adata,
-    marker_list=None,
-    cutoff_spearman=0.4,
-    cutoff_logfc=0.25,
     percentile_expr=95,
-    n_jobs=1,
     min_num_cells=5,
-    use_precomputed=True,
+    fc_cutoff=0,
+    method="spearman",
     key="epg",
 ):
 
@@ -205,65 +231,36 @@ def detect_transition_markers(
     source = adata.uns[f"{key}_pseudotime_params"]["source"]
     target = adata.uns[f"{key}_pseudotime_params"]["target"]
     nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
-
     cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
     path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
 
-    if marker_list is None:
-        print("Scanning all features ...")
-        marker_list = adata.var_names.tolist()
-    else:
-        print("Scanning the specified marker list ...")
-        ###remove duplicate keys
-        marker_list = list(dict.fromkeys(marker_list))
-        for marker in marker_list:
-            if marker not in adata.var_names:
-                raise ValueError("could not find '%s' in `adata.var_names`" % (marker))
-
     #### Scale matrix with expressed markers
-    if use_precomputed and ("scaled_marker_expr" in adata.uns.keys()):
-        print("Importing precomputed scaled marker expression matrix ...")
-        results = adata.uns["scaled_marker_expr"]
-        df_results = pd.DataFrame(results).T
-        if all(np.isin(marker_list, df_results.columns.tolist())):
-            input_markers_expressed = marker_list
-            df_scaled_marker_expr = df_results[input_markers_expressed]
-        else:
-            raise ValueError(
-                "Not all markers in `marker_list` can be found in precomputed scaled marker expression matrix. Please set `use_precomputed=False`"
-            )
+    input_markers = adata.var_names.tolist()
+    df_sc = pd.DataFrame(
+        index=adata.obs_names.tolist(),
+        data=adata[:, input_markers].X,
+        columns=input_markers,
+    )
 
-    else:
-        input_markers = marker_list
-        df_sc = pd.DataFrame(
-            index=adata.obs_names.tolist(),
-            data=adata[:, input_markers].X,
-            columns=input_markers,
-        )
-        print(
-            "Filtering out markers that are expressed in less than "
-            + str(min_num_cells)
-            + " cells ..."
-        )
-        input_markers_expressed = np.array(input_markers)[
-            np.where((df_sc[input_markers] > 0).sum(axis=0) > min_num_cells)[0]
-        ].tolist()
-        df_marker_detection = df_sc[input_markers_expressed].copy()
-        print(str(n_jobs) + " cpus are being used ...")
-        params = [
-            (df_marker_detection, x, percentile_expr) for x in input_markers_expressed
-        ]
-        pool = multiprocessing.Pool(processes=n_jobs)
-        results = pool.map(scale_marker_expr, params)
-        pool.close()
-        adata.uns["scaled_marker_expr"] = results
-        df_scaled_marker_expr = pd.DataFrame(results).T
+    print(
+        "Filtering out markers that are expressed in less than "
+        + str(min_num_cells)
+        + " cells ..."
+    )
+    input_markers_expressed = np.array(input_markers)[
+        np.where((df_sc[input_markers] > 0).sum(axis=0) > min_num_cells)[0]
+    ].tolist()
+    df_marker_detection = df_sc[input_markers_expressed].copy()
+
+    df_scaled_marker_expr = scale_marker_expr(df_marker_detection, percentile_expr)
+    adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
     print(str(len(input_markers_expressed)) + " markers are being scanned ...")
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
     df_cells_sort = df_cells.iloc[np.argsort(pseudotime_cells)]
+    pseudotime_cells_sort = pseudotime_cells[np.argsort(pseudotime_cells)]
 
     dict_tg_edges = dict()
 
@@ -275,17 +272,22 @@ def detect_transition_markers(
     )
     diff_initial_final = np.abs(values_final.mean(axis=0) - values_initial.mean(axis=0))
 
+    ### original expression
+    df_cells_ori = deepcopy(df_marker_detection.loc[cells])
+    df_cells_sort_ori = df_cells_ori.iloc[np.argsort(pseudotime_cells)]
+    values_initial_ori, values_final_ori = (
+        df_cells_sort_ori.iloc[id_initial, :],
+        df_cells_sort_ori.iloc[id_final, :],
+    )
+
     ix_pos = diff_initial_final > 0
     logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
     logfc[ix_pos] = np.log2(
-        np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0))
-        / (
-            np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0))
-            + diff_initial_final[ix_pos] / 1000.0
-        )
+        (np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
+        / (np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
     )
 
-    ix_cutoff = np.array(logfc > cutoff_logfc)
+    ix_cutoff = np.array(logfc > fc_cutoff)
 
     if sum(ix_cutoff) == 0:
         print(
@@ -297,24 +299,50 @@ def detect_transition_markers(
 
     else:
         df_stat_pval_qval = pd.DataFrame(
-            np.full((sum(ix_cutoff), 4), np.nan),
-            columns=["stat", "logfc", "pval", "qval"],
+            np.full((sum(ix_cutoff), 8), np.nan),
+            columns=[
+                "stat",
+                "logfc",
+                "pval",
+                "qval",
+                "initial_mean",
+                "final_mean",
+                "initial_mean_ori",
+                "final_mean_ori",
+            ],
             index=df_cells_sort.columns[ix_cutoff],
         )
-        df_stat_pval_qval["stat"] = nb_spearman(
-            np.array(pseudotime_cells), np.array(df_cells_sort.iloc[:, ix_cutoff])
-        )
+
+        if method == "spearman":
+            df_stat_pval_qval["stat"] = nb_spearman(
+                np.array(pseudotime_cells_sort),
+                np.array(df_cells_sort.iloc[:, ix_cutoff]),
+            )
+            df_stat_pval_qval["pval"] = p_val(
+                df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
+            )
+        elif method == "xi":
+            res = _xicorr_loop_parallel(
+                np.array(df_cells_sort.iloc[:, ix_cutoff]),
+                np.array(pseudotime_cells_sort),
+            )
+            df_stat_pval_qval["stat"] = res[0]
+            df_stat_pval_qval["pval"] = res[1]
+        else:
+            raise ValueError("method must be one of 'spearman', 'xi'")
+
         df_stat_pval_qval["logfc"] = logfc
-        df_stat_pval_qval["pval"] = p_val(
-            df_stat_pval_qval["stat"], len(pseudotime_cells)
-        )
 
         p_values = df_stat_pval_qval["pval"]
         q_values = multipletests(p_values, method="fdr_bh")[1]
         df_stat_pval_qval["qval"] = q_values
-        dict_tg_edges[path_alias] = df_stat_pval_qval[
-            (abs(df_stat_pval_qval.stat) >= cutoff_spearman)
-        ].sort_values(["qval"])
+        df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
+        df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
+        df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
+
+        dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
+
         dict_tg_edges[path_alias].to_csv(
             os.path.join(
                 file_path,

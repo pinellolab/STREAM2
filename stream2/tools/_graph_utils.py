@@ -2,7 +2,7 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
-from copy import deepcopy
+import pandas as pd
 from shapely.geometry import MultiLineString, LineString
 
 from ._elpigraph import (
@@ -26,7 +26,7 @@ def add_loops(
     fit_loops=True,
     plot=False,
     verbose=False,
-    copy=False,
+    inplace=False,
     use_weights=False,
     use_partition=False,
     key="epg",
@@ -137,7 +137,7 @@ def add_loops(
             use_weights=use_weights,
             plot=plot,
             verbose=verbose,
-            copy=copy,
+            inplace=inplace,
             key=key,
         )
 
@@ -158,7 +158,7 @@ def _add_loops(
     use_weights=False,
     plot=False,
     verbose=False,
-    copy=False,
+    inplace=False,
     key="epg",
 ):
 
@@ -176,7 +176,16 @@ def _add_loops(
     else:
         weights = None
 
-    new_edges, new_nodep, new_leaves, merged_nodep, merged_edges = elpigraph.addLoops(
+    (
+        new_edges,
+        new_nodep,
+        new_leaves,
+        new_part,
+        new_energy,
+        new_inner_fraction,
+        merged_nodep,
+        merged_edges,
+    ) = elpigraph.addLoops(
         X,
         init_nodes_pos,
         init_edges,
@@ -197,13 +206,24 @@ def _add_loops(
         verbose=verbose,
     )
     if new_edges is None:
+        print("Found no valid path to add")
         return
     else:
-        if copy:
-            _adata = sc.AnnData(X, obsm=adata.obsm, obs=adata.obs, uns=adata.uns)
-            _adata.uns[key]["node_pos"] = merged_nodep
-            _adata.uns[key]["edge"] = merged_edges
-            return _adata
+        if not inplace:
+            l = [new_inner_fraction, new_energy, [len(n) for n in new_part]]
+            df = pd.concat(
+                [pd.DataFrame(new_leaves)] + [pd.Series(i) for i in l], axis=1
+            )
+            df.columns = [
+                "source node",
+                "target node",
+                "inner fraction",
+                "energy",
+                "n° of points in path",
+            ]
+            df.index = ["" for i in df.index]
+            print("Suggested paths:")
+            print(df)
         else:
             adata.uns[key]["node_pos"] = merged_nodep
             adata.uns[key]["edge"] = merged_edges
@@ -484,7 +504,7 @@ def ordinal_knn(
     metric="cosine",
     method="guide",
     return_sparse=False,
-    stages=None
+    stages=None,
 ):
 
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
@@ -520,8 +540,18 @@ def ordinal_knn(
         return knn_dists, knn_idx
 
 
-def smooth_ordinal_labels(adata, root, ordinal_label, obsm="X_pca",layer=None,n_neighbors=15,
-n_natural=1, metric='euclidean',method='guide',stages=None,):
+def smooth_ordinal_labels(
+    adata,
+    root,
+    ordinal_label,
+    obsm="X_pca",
+    layer=None,
+    n_neighbors=15,
+    n_natural=1,
+    metric="euclidean",
+    method="guide",
+    stages=None,
+):
 
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
         raise ValueError("Only one of `layer` and `obsm` can be used")
@@ -537,10 +567,18 @@ n_natural=1, metric='euclidean',method='guide',stages=None,):
             raise ValueError(f"could not find {layer} in `adata.layers`")
     else:
         mat = adata.X
-    
-    g=elpigraph.utils.supervised_knn(mat,stages_labels=adata.obs[ordinal_label],
-                                    stages=stages,n_natural=n_natural,
-                                    n_neighbors=n_neighbors,m=metric,method=method,
-                                    return_sparse=True)
 
-    adata.obs['ps']=elpigraph.utils.geodesic_pseudotime(mat,n_neighbors,root=root,g=g)
+    g = elpigraph.utils.supervised_knn(
+        mat,
+        stages_labels=adata.obs[ordinal_label],
+        stages=stages,
+        n_natural=n_natural,
+        n_neighbors=n_neighbors,
+        m=metric,
+        method=method,
+        return_sparse=True,
+    )
+
+    adata.obs["ps"] = elpigraph.utils.geodesic_pseudotime(
+        mat, n_neighbors, root=root, g=g
+    )
