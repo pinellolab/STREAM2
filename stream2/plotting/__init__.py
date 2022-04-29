@@ -8,5 +8,5 @@ from ._plot import (
     hist,
     umap,
     graph,
-    plot_features_in_pseudotime
+    plot_features_in_pseudotime,
 )

@@ -10,6 +10,7 @@ from statsmodels.sandbox.stats.multicomp import multipletests
 
 from .. import _utils
 
+
 @nb.njit
 def nb_unique1d(ar):
     """
@@ -105,7 +106,7 @@ def pearson_corr(arr1, arr2):
 
 @nb.njit(parallel=True, fastmath=True)
 def _rankdata(X):
-    """reimplementing scipy.stats.rankdata faster """
+    """reimplementing scipy.stats.rankdata faster"""
     tmp = np.zeros_like(X)
     for i in nb.prange(X.shape[0]):
         tmp[i] = _rankdata_inner(X[i])
@@ -131,7 +132,7 @@ def _rankdata_inner(x):
 
 
 def p_val(r, n):
-    t = r * np.sqrt((n - 2) / (1 - r ** 2))
+    t = r * np.sqrt((n - 2) / (1 - r**2))
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
@@ -142,32 +143,39 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
     df_neg = df_marker_detection.loc[:, ind_neg]
     df_pos = df_marker_detection.loc[:, ind_pos]
 
-    if ind_neg.sum() >0:
-        print('Matrix contains negative values...')
+    if ind_neg.sum() > 0:
+        print("Matrix contains negative values...")
         ### genes with negative values
-        minValues = df_neg.apply(lambda x: np.percentile(x[x < 0], 100-percentile_expr), axis=0)
-        maxValues = df_neg.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
+        minValues = df_neg.apply(
+            lambda x: np.percentile(x[x < 0], 100 - percentile_expr), axis=0
+        )
+        maxValues = df_neg.apply(
+            lambda x: np.percentile(x[x > 0], percentile_expr), axis=0
+        )
         for i in range(df_neg.shape[1]):
-            df_gene = df_neg.iloc[:,i].copy(deep=True)
+            df_gene = df_neg.iloc[:, i].copy(deep=True)
             df_gene[df_gene < minValues[i]] = minValues[i]
             df_gene[df_gene > maxValues[i]] = maxValues[i]
-            df_neg.iloc[:,i] = df_gene-minValues[i]
+            df_neg.iloc[:, i] = df_gene - minValues[i]
         df_neg = df_neg.copy(deep=True)
         maxValues = df_neg.max(axis=0)
-        df_neg_scaled = df_neg / maxValues[:,None].T
+        df_neg_scaled = df_neg / maxValues[:, None].T
     else:
-        df_neg_scaled = pd.DataFrame(index = df_neg.index)
+        df_neg_scaled = pd.DataFrame(index=df_neg.index)
 
-    if ind_pos.sum() >0:
-        maxValues = df_pos.apply(lambda x: np.percentile(x[x > 0], percentile_expr), axis=0)
-        df_pos_scaled = df_pos / maxValues[:,None].T
+    if ind_pos.sum() > 0:
+        maxValues = df_pos.apply(
+            lambda x: np.percentile(x[x > 0], percentile_expr), axis=0
+        )
+        df_pos_scaled = df_pos / maxValues[:, None].T
         df_pos_scaled[df_pos_scaled > 1] = 1
     else:
-        df_pos_scaled = pd.DataFrame(index = df_pos.index)
+        df_pos_scaled = pd.DataFrame(index=df_pos.index)
 
     df_marker_detection_scaled = pd.concat([df_neg_scaled, df_pos_scaled], axis=1)
 
     return df_marker_detection_scaled
+
 
 def detect_transition_markers(
     adata,
@@ -194,7 +202,7 @@ def detect_transition_markers(
         index=adata.obs_names.tolist(),
         data=adata[:, input_markers].X,
         columns=input_markers,
-        )
+    )
 
     print(
         "Filtering out markers that are expressed in less than "
@@ -238,10 +246,7 @@ def detect_transition_markers(
     logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
     logfc[ix_pos] = np.log2(
         (np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
-        / (
-            np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0))
-            + 0.01
-        )
+        / (np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
     )
 
     ix_cutoff = np.array(logfc > fc_cutoff)
@@ -257,7 +262,16 @@ def detect_transition_markers(
     else:
         df_stat_pval_qval = pd.DataFrame(
             np.full((sum(ix_cutoff), 8), np.nan),
-            columns=["stat", "logfc", "pval", "qval",'initial_mean','final_mean','initial_mean_ori','final_mean_ori'],
+            columns=[
+                "stat",
+                "logfc",
+                "pval",
+                "qval",
+                "initial_mean",
+                "final_mean",
+                "initial_mean_ori",
+                "final_mean_ori",
+            ],
             index=df_cells_sort.columns[ix_cutoff],
         )
         df_stat_pval_qval["stat"] = nb_spearman(

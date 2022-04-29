@@ -9,25 +9,17 @@ from pandas.api.types import (
 )
 import matplotlib as mpl
 
-from ._palettes import (
-    default_20,
-    default_28,
-    default_102
-)
+from ._palettes import default_20, default_28, default_102
 
 
-def get_colors(arr,
-               vmin=None,
-               vmax=None,
-               clip=False):
-    """Generate a list of colors for a given array
-    """
+def get_colors(arr, vmin=None, vmax=None, clip=False):
+    """Generate a list of colors for a given array"""
 
     if not isinstance(arr, (pd.Series, np.ndarray)):
         raise TypeError("`arr` must be pd.Series or np.ndarray")
     colors = []
     if is_numeric_dtype(arr):
-        image_cmap = mpl.rcParams['image.cmap']
+        image_cmap = mpl.rcParams["image.cmap"]
         cm = mpl.cm.get_cmap(image_cmap, 512)
         if vmin is None:
             vmin = min(arr)
@@ -40,10 +32,9 @@ def get_colors(arr,
         length = len(categories)
         # check if default matplotlib palette has enough colors
         # mpl.style.use('default')
-        if len(mpl.rcParams['axes.prop_cycle'].by_key()['color']) >= length:
-            cc = mpl.rcParams['axes.prop_cycle']()
-            palette = [mpl.colors.rgb2hex(next(cc)['color'])
-                       for _ in range(length)]
+        if len(mpl.rcParams["axes.prop_cycle"].by_key()["color"]) >= length:
+            cc = mpl.rcParams["axes.prop_cycle"]()
+            palette = [mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)]
         else:
             if length <= 20:
                 palette = default_20
@@ -53,9 +44,10 @@ def get_colors(arr,
                 palette = default_102
             else:
                 rgb_rainbow = mpl.cm.rainbow(np.linspace(0, 1, length))
-                palette = [mpl.colors.rgb2hex(rgb_rainbow[i, :-1])
-                           for i in range(length)]
-        colors = pd.Series(['']*len(arr))
+                palette = [
+                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1]) for i in range(length)
+                ]
+        colors = pd.Series([""] * len(arr))
         for i, x in enumerate(categories):
             ids = np.where(arr == x)[0]
             colors[ids] = palette[i]
@@ -66,8 +58,7 @@ def get_colors(arr,
 
 
 def generate_palette(arr):
-    """Generate a color palette for a given array
-    """
+    """Generate a color palette for a given array"""
 
     if not isinstance(arr, (pd.Series, np.ndarray)):
         raise TypeError("`arr` must be pd.Series or np.ndarray")
@@ -77,10 +68,9 @@ def generate_palette(arr):
         length = len(categories)
         # check if default matplotlib palette has enough colors
         # mpl.style.use('default')
-        if len(mpl.rcParams['axes.prop_cycle'].by_key()['color']) >= length:
-            cc = mpl.rcParams['axes.prop_cycle']()
-            palette = [mpl.colors.rgb2hex(next(cc)['color'])
-                       for _ in range(length)]
+        if len(mpl.rcParams["axes.prop_cycle"].by_key()["color"]) >= length:
+            cc = mpl.rcParams["axes.prop_cycle"]()
+            palette = [mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)]
         else:
             if length <= 20:
                 palette = default_20
@@ -90,9 +80,10 @@ def generate_palette(arr):
                 palette = default_102
             else:
                 rgb_rainbow = mpl.cm.rainbow(np.linspace(0, 1, length))
-                palette = [mpl.colors.rgb2hex(rgb_rainbow[i, :-1])
-                           for i in range(length)]
-        colors = pd.Series(['']*len(arr))
+                palette = [
+                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1]) for i in range(length)
+                ]
+        colors = pd.Series([""] * len(arr))
         for i, x in enumerate(categories):
             ids = np.where(arr == x)[0]
             colors[ids] = palette[i]
