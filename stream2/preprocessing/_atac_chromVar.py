@@ -18,7 +18,9 @@ def anndata2file(adata, outdir):
 
     # Save region
     region = adata.var[["seqnames", "start", "end"]]
-    region.to_csv(outdir + "/region_file.bed", sep="\t", header=None, index=None)
+    region.to_csv(
+        outdir + "/region_file.bed", sep="\t", header=None, index=None
+    )
 
     # Save sample
     sample = pd.DataFrame(adata.obs.index.tolist())
@@ -39,10 +41,14 @@ def file2anndata(indir, scale):
         print("Scale zscored motif...")
         df_zscores_scaled = preprocessing.scale(df_zscores, axis=1)
         df_zscores_scaled = pd.DataFrame(
-            df_zscores_scaled, index=df_zscores.index, columns=df_zscores.columns
+            df_zscores_scaled,
+            index=df_zscores.index,
+            columns=df_zscores.columns,
         )
         df_zscores_scaled.to_csv(
-            os.path.join(indir, "zscores_scaled.tsv.gz"), sep="\t", compression="gzip"
+            os.path.join(indir, "zscores_scaled.tsv.gz"),
+            sep="\t",
+            compression="gzip",
         )
         motifs = df_zscores_scaled
     else:
@@ -57,7 +63,9 @@ def file2anndata(indir, scale):
     motifs.to_csv(indir + "/zscores_renamed.csv", sep="\t")
 
     print("Save to anndata...")
-    adata = ad.read_csv(filename=indir + "/zscores_renamed.csv", delimiter="\t")
+    adata = ad.read_csv(
+        filename=indir + "/zscores_renamed.csv", delimiter="\t"
+    )
     return adata
 
 
@@ -78,7 +86,15 @@ def atac_chromVar(
     # not, "conda create -n stream2_chromVar R chronmVar,..."
     # run R script
     subprocess.run(
-        args=["./check_env.sh", env, outdir, species, genome, feature, str(n_jobs)]
+        args=[
+            "./check_env.sh",
+            env,
+            outdir,
+            species,
+            genome,
+            feature,
+            str(n_jobs),
+        ]
     )
 
     # read in motif matrix and save in anndata

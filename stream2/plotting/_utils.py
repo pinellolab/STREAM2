@@ -34,7 +34,9 @@ def get_colors(arr, vmin=None, vmax=None, clip=False):
         # mpl.style.use('default')
         if len(mpl.rcParams["axes.prop_cycle"].by_key()["color"]) >= length:
             cc = mpl.rcParams["axes.prop_cycle"]()
-            palette = [mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)]
+            palette = [
+                mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)
+            ]
         else:
             if length <= 20:
                 palette = default_20
@@ -45,7 +47,8 @@ def get_colors(arr, vmin=None, vmax=None, clip=False):
             else:
                 rgb_rainbow = mpl.cm.rainbow(np.linspace(0, 1, length))
                 palette = [
-                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1]) for i in range(length)
+                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1])
+                    for i in range(length)
                 ]
         colors = pd.Series([""] * len(arr))
         for i, x in enumerate(categories):
@@ -70,7 +73,9 @@ def generate_palette(arr):
         # mpl.style.use('default')
         if len(mpl.rcParams["axes.prop_cycle"].by_key()["color"]) >= length:
             cc = mpl.rcParams["axes.prop_cycle"]()
-            palette = [mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)]
+            palette = [
+                mpl.colors.rgb2hex(next(cc)["color"]) for _ in range(length)
+            ]
         else:
             if length <= 20:
                 palette = default_20
@@ -81,7 +86,8 @@ def generate_palette(arr):
             else:
                 rgb_rainbow = mpl.cm.rainbow(np.linspace(0, 1, length))
                 palette = [
-                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1]) for i in range(length)
+                    mpl.colors.rgb2hex(rgb_rainbow[i, :-1])
+                    for i in range(length)
                 ]
         colors = pd.Series([""] * len(arr))
         for i, x in enumerate(categories):

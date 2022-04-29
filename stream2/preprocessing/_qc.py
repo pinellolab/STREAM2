@@ -551,7 +551,9 @@ def filter_genes(
         adata.var["pct_cells"] = pct_cells
 
     print("Before filtering: ")
-    print(str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature)
+    print(
+        str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature
+    )
     if (
         sum(
             list(
@@ -593,7 +595,13 @@ def filter_genes(
             feature_subset = (n_counts <= max_n_counts) & feature_subset
         adata._inplace_subset_var(feature_subset)
         print("After filtering out low-expressed " + feature + ": ")
-        print(str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature)
+        print(
+            str(adata.shape[0])
+            + " cells, "
+            + str(adata.shape[1])
+            + " "
+            + feature
+        )
     return None
 
 
@@ -657,7 +665,9 @@ def filter_peaks(
         adata.var["pct_cells"] = pct_cells
 
     print("Before filtering: ")
-    print(str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature)
+    print(
+        str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature
+    )
     if (
         sum(
             list(
@@ -699,7 +709,13 @@ def filter_peaks(
             feature_subset = (n_counts <= max_n_counts) & feature_subset
         adata._inplace_subset_var(feature_subset)
         print("After filtering out low-expressed " + feature + ": ")
-        print(str(adata.shape[0]) + " cells, " + str(adata.shape[1]) + " " + feature)
+        print(
+            str(adata.shape[0])
+            + " cells, "
+            + str(adata.shape[1])
+            + " "
+            + feature
+        )
     return None
 
 

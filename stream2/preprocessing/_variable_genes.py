@@ -37,7 +37,10 @@ def select_variable_genes(
     not_const = variance > 0
 
     model = loess(
-        np.log10(mean[not_const]), np.log10(variance[not_const]), span=span, degree=2
+        np.log10(mean[not_const]),
+        np.log10(variance[not_const]),
+        span=span,
+        degree=2,
     )
     model.fit()
     variance_expected[not_const] = 10**model.outputs.fitted_values

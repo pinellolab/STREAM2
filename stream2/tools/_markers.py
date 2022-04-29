@@ -23,7 +23,9 @@ def nb_unique1d(ar):
     mask = np.empty(aux.shape, dtype=np.bool_)
     mask[:1] = True
     if aux.shape[0] > 0 and aux.dtype.kind in "cfmM" and np.isnan(aux[-1]):
-        if aux.dtype.kind == "c":  # for complex all NaNs are considered equivalent
+        if (
+            aux.dtype.kind == "c"
+        ):  # for complex all NaNs are considered equivalent
             aux_firstnan = np.searchsorted(np.isnan(aux), True, side="left")
         else:
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
@@ -101,7 +103,9 @@ def pearson_corr(arr1, arr2):
     denom = np.sqrt(var1 * var2)
 
     # Divide numerator by denominator, but use NaN where the denominator is 0
-    return np.divide(numer, denom, out=np.full_like(numer, np.nan), where=(denom != 0))
+    return np.divide(
+        numer, denom, out=np.full_like(numer, np.nan), where=(denom != 0)
+    )
 
 
 @nb.njit(parallel=True, fastmath=True)
@@ -172,7 +176,9 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
     else:
         df_pos_scaled = pd.DataFrame(index=df_pos.index)
 
-    df_marker_detection_scaled = pd.concat([df_neg_scaled, df_pos_scaled], axis=1)
+    df_marker_detection_scaled = pd.concat(
+        [df_neg_scaled, df_pos_scaled], axis=1
+    )
 
     return df_marker_detection_scaled
 
@@ -194,7 +200,9 @@ def detect_transition_markers(
         os.makedirs(file_path)
 
     #### Extract cells by provided nodes
-    cells, path_alias = _utils.get_path(adata, source, target, nodes_to_include, key)
+    cells, path_alias = _utils.get_path(
+        adata, source, target, nodes_to_include, key
+    )
 
     #### Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
@@ -214,7 +222,9 @@ def detect_transition_markers(
     ].tolist()
     df_marker_detection = df_sc[input_markers_expressed].copy()
 
-    df_scaled_marker_expr = scale_marker_expr(df_marker_detection, percentile_expr)
+    df_scaled_marker_expr = scale_marker_expr(
+        df_marker_detection, percentile_expr
+    )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
     print(str(len(input_markers_expressed)) + " markers are being scanned ...")
@@ -227,12 +237,16 @@ def detect_transition_markers(
     dict_tg_edges = dict()
 
     id_initial = range(0, int(df_cells_sort.shape[0] * 0.2))
-    id_final = range(int(df_cells_sort.shape[0] * 0.8), int(df_cells_sort.shape[0] * 1))
+    id_final = range(
+        int(df_cells_sort.shape[0] * 0.8), int(df_cells_sort.shape[0] * 1)
+    )
     values_initial, values_final = (
         df_cells_sort.iloc[id_initial, :],
         df_cells_sort.iloc[id_final, :],
     )
-    diff_initial_final = np.abs(values_final.mean(axis=0) - values_initial.mean(axis=0))
+    diff_initial_final = np.abs(
+        values_final.mean(axis=0) - values_initial.mean(axis=0)
+    )
 
     ### original expression
     df_cells_ori = deepcopy(df_marker_detection.loc[cells])
@@ -243,10 +257,18 @@ def detect_transition_markers(
     )
 
     ix_pos = diff_initial_final > 0
-    logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
+    logfc = pd.Series(
+        np.zeros(len(diff_initial_final)), index=diff_initial_final.index
+    )
     logfc[ix_pos] = np.log2(
-        (np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
-        / (np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
+        (
+            np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0))
+            + 0.01
+        )
+        / (
+            np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0))
+            + 0.01
+        )
     )
 
     ix_cutoff = np.array(logfc > fc_cutoff)
@@ -275,7 +297,8 @@ def detect_transition_markers(
             index=df_cells_sort.columns[ix_cutoff],
         )
         df_stat_pval_qval["stat"] = nb_spearman(
-            np.array(pseudotime_cells_sort), np.array(df_cells_sort.iloc[:, ix_cutoff])
+            np.array(pseudotime_cells_sort),
+            np.array(df_cells_sort.iloc[:, ix_cutoff]),
         )
         df_stat_pval_qval["logfc"] = logfc
         df_stat_pval_qval["pval"] = p_val(
@@ -295,7 +318,11 @@ def detect_transition_markers(
         dict_tg_edges[path_alias].to_csv(
             os.path.join(
                 file_path,
-                "transition_markers_path_" + str(source) + "-" + str(target) + ".tsv",
+                "transition_markers_path_"
+                + str(source)
+                + "-"
+                + str(target)
+                + ".tsv",
             ),
             sep="\t",
             index=True,
