@@ -7,15 +7,16 @@ from ._utils import (
 )
 
 
-def pca(adata,
-        n_components=50,
-        algorithm='randomized',
-        n_iter=5,
-        random_state=2021,
-        tol=0.0,
-        feature=None,
-        **kwargs,
-        ):
+def pca(
+    adata,
+    n_components=50,
+    algorithm="randomized",
+    n_iter=5,
+    random_state=2021,
+    tol=0.0,
+    feature=None,
+    **kwargs,
+):
     """perform Principal Component Analysis (PCA)
     Parameters
     ----------
@@ -52,60 +53,67 @@ def pca(adata,
     `.uns['pca']['variance_ratio']` : `array`
         Percentage of variance explained by each of the selected components.
     """
-    if(feature is None):
+    if feature is None:
         X = adata.X.copy()
     else:
         mask = adata.var[feature]
         X = adata[:, mask].X.copy()
-    svd = TruncatedSVD(n_components=n_components,
-                       algorithm=algorithm,
-                       n_iter=n_iter,
-                       random_state=random_state,
-                       tol=tol,
-                       **kwargs)
+    svd = TruncatedSVD(
+        n_components=n_components,
+        algorithm=algorithm,
+        n_iter=n_iter,
+        random_state=random_state,
+        tol=tol,
+        **kwargs,
+    )
     svd.fit(X)
-    adata.obsm['X_pca'] = svd.transform(X)
-    adata.uns['pca'] = dict()
-    adata.uns['pca']['n_pcs'] = n_components
-    adata.uns['pca']['PCs'] = svd.components_.T
-    adata.uns['pca']['variance'] = svd.explained_variance_
-    adata.uns['pca']['variance_ratio'] = svd.explained_variance_ratio_
+    adata.obsm["X_pca"] = svd.transform(X)
+    adata.uns["pca"] = dict()
+    adata.uns["pca"]["n_pcs"] = n_components
+    adata.uns["pca"]["PCs"] = svd.components_.T
+    adata.uns["pca"]["variance"] = svd.explained_variance_
+    adata.uns["pca"]["variance_ratio"] = svd.explained_variance_ratio_
 
 
-def select_pcs(adata,
-               n_pcs=None,
-               S=1,
-               curve='convex',
-               direction='decreasing',
-               online=False,
-               min_elbow=None,
-               **kwargs):
-    """select top PCs based on variance_ratio
-    """
-    if(n_pcs is None):
-        n_components = adata.obsm['X_pca'].shape[1]
-        if(min_elbow is None):
-            min_elbow = n_components/10
-        n_pcs = locate_elbow(range(n_components),
-                             adata.uns['pca']['variance_ratio'],
-                             S=S,
-                             curve=curve,
-                             min_elbow=min_elbow,
-                             direction=direction,
-                             online=online,
-                             **kwargs)
-        adata.uns['pca']['n_pcs'] = n_pcs
+def select_pcs(
+    adata,
+    n_pcs=None,
+    S=1,
+    curve="convex",
+    direction="decreasing",
+    online=False,
+    min_elbow=None,
+    **kwargs,
+):
+    """select top PCs based on variance_ratio"""
+    if n_pcs is None:
+        n_components = adata.obsm["X_pca"].shape[1]
+        if min_elbow is None:
+            min_elbow = n_components / 10
+        n_pcs = locate_elbow(
+            range(n_components),
+            adata.uns["pca"]["variance_ratio"],
+            S=S,
+            curve=curve,
+            min_elbow=min_elbow,
+            direction=direction,
+            online=online,
+            **kwargs,
+        )
+        adata.uns["pca"]["n_pcs"] = n_pcs
     else:
-        adata.uns['pca']['n_pcs'] = n_pcs
+        adata.uns["pca"]["n_pcs"] = n_pcs
 
 
-def select_pcs_features(adata,
-                        S=1,
-                        curve='convex',
-                        direction='decreasing',
-                        online=False,
-                        min_elbow=None,
-                        **kwargs):
+def select_pcs_features(
+    adata,
+    S=1,
+    curve="convex",
+    direction="decreasing",
+    online=False,
+    min_elbow=None,
+    **kwargs,
+):
     """select features that contribute to the top PCs
 
     S : `float`, optional (default: 10)
@@ -125,28 +133,35 @@ def select_pcs_features(adata,
         Extra arguments to KneeLocator.
 
     """
-    n_pcs = adata.uns['pca']['n_pcs']
-    n_features = adata.uns['pca']['PCs'].shape[0]
-    if(min_elbow is None):
-        min_elbow = n_features/6
-    adata.uns['pca']['features'] = dict()
+    n_pcs = adata.uns["pca"]["n_pcs"]
+    n_features = adata.uns["pca"]["PCs"].shape[0]
+    if min_elbow is None:
+        min_elbow = n_features / 6
+    adata.uns["pca"]["features"] = dict()
     ids_features = list()
     for i in range(n_pcs):
-        elbow = locate_elbow(range(n_features),
-                             np.sort(
-                                 np.abs(adata.uns['pca']['PCs'][:, i],))[::-1],
-                             S=S,
-                             min_elbow=min_elbow,
-                             curve=curve,
-                             direction=direction,
-                             online=online,
-                             **kwargs)
-        ids_features_i = \
-            list(np.argsort(np.abs(
-                adata.uns['pca']['PCs'][:, i],))[::-1][:elbow])
-        adata.uns['pca']['features'][f'pc_{i}'] = ids_features_i
+        elbow = locate_elbow(
+            range(n_features),
+            np.sort(
+                np.abs(
+                    adata.uns["pca"]["PCs"][:, i],
+                )
+            )[::-1],
+            S=S,
+            min_elbow=min_elbow,
+            curve=curve,
+            direction=direction,
+            online=online,
+            **kwargs,
+        )
+        ids_features_i = list(
+            np.argsort(np.abs(adata.uns["pca"]["PCs"][:, i],))[
+                ::-1
+            ][:elbow]
+        )
+        adata.uns["pca"]["features"][f"pc_{i}"] = ids_features_i
         ids_features = ids_features + ids_features_i
-        print(f'#features selected from PC {i}: {len(ids_features_i)}')
-    adata.var['top_pcs'] = False
-    adata.var.loc[adata.var_names[np.unique(ids_features)], 'top_pcs'] = True
+        print(f"#features selected from PC {i}: {len(ids_features_i)}")
+    adata.var["top_pcs"] = False
+    adata.var.loc[adata.var_names[np.unique(ids_features)], "top_pcs"] = True
     print(f'#features in total: {adata.var["top_pcs"].sum()}')

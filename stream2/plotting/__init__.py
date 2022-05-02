@@ -7,5 +7,6 @@ from ._plot import (
     violin,
     hist,
     umap,
-    graph
+    graph,
+    plot_features_in_pseudotime,
 )
