@@ -54,11 +54,9 @@ def learn_graph(
         Node positions.
     """
 
-    assert method in [
-        "principal_curve",
-        "principal_tree",
-        "principal_circle",
-    ], (
+    assert method in ["principal_curve",
+                      "principal_tree",
+                      "principal_circle"], (
         "`method` must be one of "
         "['principal_curve','principal_tree','principal_circle']"
     )
@@ -169,7 +167,6 @@ def seed_graph(
     n_neighbors=50,
     nb_pct=None,
     paths=[],
-    paths_forbidden=[],
     labels=None,
 ):
 
@@ -217,8 +214,6 @@ def seed_graph(
         The principal graph will be learnt in the new manifold.
     paths: list of lists, optional (default: [])
         Paths between categorical labels used for supervised MST initialization
-    paths_forbidden: list of lists, optional (default: [])
-        Forbidden paths between categorical labels used for supervised MST initialization
     labels: `str`, optional (default: None)
         Categorical labels for supervised MST initialization
 
@@ -285,10 +280,8 @@ def seed_graph(
         ).fit(mat)
         # ap = AffinityPropagation(damping=damping).fit(mat)
         if ap.cluster_centers_.shape[0] > max_n_clusters:
-            print(
-                "The number of clusters is "
-                + str(ap.cluster_centers_.shape[0])
-            )
+            print("The number of clusters is "
+                  + str(ap.cluster_centers_.shape[0]))
             print(
                 "Too many clusters are generated, "
                 "please lower pref_perc or increase damping and retry it"
@@ -315,8 +308,9 @@ def seed_graph(
     elif clustering == "kmeans":
         print("K-Means clustering ...")
         kmeans = KMeans(
-            n_clusters=n_clusters, init="k-means++", random_state=42
-        ).fit(mat)
+            n_clusters=n_clusters, init="k-means++", random_state=42).fit(
+            mat
+        )
         cluster_labels = kmeans.labels_
         init_nodes_pos = kmeans.cluster_centers_
     else:
@@ -327,9 +321,8 @@ def seed_graph(
     print("Calculating minimum spanning tree...")
 
     # ---if supervised adjacency matrix option
-    if (len(paths) > 0 and labels is None) or (
-        len(paths) == 0 and labels is not None
-    ):
+    if (len(paths) > 0 and labels is None) \
+       or (len(paths) == 0 and labels is not None):
         raise ValueError(
             "Both a label key (labels: str) and "
             "cluster paths (paths: list of list) need to be provided "
@@ -337,12 +330,7 @@ def seed_graph(
         )
     elif len(paths) > 0 and labels is not None:
         init_nodes_pos, clus_adjmat = _categorical_adjmat(
-            mat,
-            init_nodes_pos,
-            paths,
-            paths_forbidden,
-            adata.obs[labels],
-            n_neighbors=10,
+            mat, init_nodes_pos, paths, adata.obs[labels], n_neighbors=10
         )
         D = pairwise_distances(init_nodes_pos)
         G = nx.from_numpy_matrix(D * clus_adjmat)
@@ -375,7 +363,7 @@ def seed_graph(
 
 
 def _store_graph_attributes(adata, mat, key):
-    """Compute graph attributes and store them in adata.uns[key]"""
+    """ Compute graph attributes and store them in adata.uns[key] """
 
     G = nx.Graph()
     G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
@@ -388,7 +376,7 @@ def _store_graph_attributes(adata, mat, key):
         X=mat,
         NodePositions=adata.uns[key]["node_pos"],
         MaxBlockSize=len(adata.uns[key]["node_pos"]) ** 4,
-        SquaredX=np.sum(mat**2, axis=1, keepdims=1),
+        SquaredX=np.sum(mat ** 2, axis=1, keepdims=1),
     )
     # project points onto edges
     dict_proj = elpigraph.src.reporting.project_point_onto_graph(
@@ -410,11 +398,10 @@ def _store_graph_attributes(adata, mat, key):
 
 
 def _get_branch_id(adata, key="epg"):
-    """add adata.obs['branch_id']"""
+    """ add adata.obs['branch_id'] """
     # get branches
     net = elpigraph.src.graphs.ConstructGraph(
-        {"Edges": [adata.uns[key]["edge"]]}
-    )
+        {"Edges": [adata.uns[key]["edge"]]})
     branches = elpigraph.src.graphs.GetSubGraph(net, "branches")
     _dict_branches = {
         (b[0], b[-1]): b for i, b in enumerate(branches)
@@ -456,21 +443,13 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths):
     labels_ignored are connected to all other labels
     """
 
-    num_labels = {
-        s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
-    }
+    num_labels = {s: i
+                  for i, s in enumerate(np.append(labels_u, labels_ignored))}
     adjmat = np.zeros(
-        (
-            len(labels_u) + len(labels_ignored),
-            len(labels_u) + len(labels_ignored),
-        ),
+        (len(labels_u) + len(labels_ignored),
+         len(labels_u) + len(labels_ignored)),
         dtype=int,
     )
-
-    # allow within-cluster connections
-    np.fill_diagonal(adjmat, 1)
-
-    # allow connections given from paths
     for p in paths:
         for i in range(len(p) - 1):
             adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
@@ -485,7 +464,7 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths):
 
 
 def _get_clus_adjmat(adjmat, num_modes, n_clusters):
-    """Create clus_adjmat given labels adjmat and kmeans label assignment."""
+    """ Create clus_adjmat given labels adjmat and kmeans label assignment."""
 
     adjmat_clus = np.full((n_clusters, n_clusters), np.nan)
     eis, ejs = adjmat.nonzero()
@@ -500,7 +479,7 @@ def _get_clus_adjmat(adjmat, num_modes, n_clusters):
 
 
 def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
-    """Main function, create categorical adjmat
+    """ Main function, create categorical adjmat
     given node positions, cluster paths, point labels
     """
 
@@ -510,12 +489,10 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
     adjmat, num_labels = _get_labels_adjmat(labels_u, labels_ignored, paths)
     # assign label to points
     dis, ind = (
-        NearestNeighbors(n_neighbors=n_neighbors)
-        .fit(mat)
-        .kneighbors(init_nodes_pos)
+        NearestNeighbors(
+            n_neighbors=n_neighbors).fit(mat).kneighbors(init_nodes_pos)
     )
-    # assign label to nodes
-    modes = _get_partition_modes(mat, init_nodes_pos, labels)
+    modes = scipy.stats.mode(np.array(labels)[ind], axis=1).mode.flatten()
     num_modes = np.array([num_labels[m] for m in modes])
 
     # add centroids if necessary to prevent bug
@@ -527,14 +504,12 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, labels, n_neighbors=10):
             "Adding label centroid(s) as node(s)"
         )
         centroids = np.vstack(
-            [mat[labels == s].mean(axis=0) for s in labels_miss]
-        )
+            [mat[labels == s].mean(axis=0) for s in labels_miss])
         init_nodes_pos = np.vstack((init_nodes_pos, centroids))
         modes = np.hstack((modes, labels_miss))
         num_modes = np.array([num_labels[m] for m in modes])
 
     # nodes adjacency matrix
     clus_adjmat = _get_clus_adjmat(
-        adjmat, num_modes, n_clusters=len(init_nodes_pos)
-    )
+        adjmat, num_modes, n_clusters=len(init_nodes_pos))
     return init_nodes_pos, clus_adjmat

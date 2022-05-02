@@ -2,7 +2,6 @@
 
 import anndata as ad
 import pandas as pd
-import numpy as np
 from scipy import io
 import os
 import subprocess

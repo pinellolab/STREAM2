@@ -17,12 +17,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm
-
-lowess = sm.nonparametric.lowess
-
 from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
+
+lowess = sm.nonparametric.lowess
 
 
 def violin(
@@ -281,7 +280,9 @@ def pca_variance_ratio(
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
         plt.savefig(
-            os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
         )
         plt.close(fig)
 
@@ -355,7 +356,9 @@ def pcs_features(
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
         plt.savefig(
-            os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
         )
         plt.close(fig)
 
@@ -422,7 +425,9 @@ def variable_genes(
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
         fig.savefig(
-            os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
         )
         plt.close(fig)
 
@@ -637,7 +642,9 @@ def _scatterplot2d(
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
         plt.savefig(
-            os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
         )
         plt.close(fig)
     if copy:
@@ -1168,7 +1175,9 @@ def graph(
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
         fig.savefig(
-            os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
         )
         plt.close(fig)
 

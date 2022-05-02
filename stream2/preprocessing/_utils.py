@@ -45,8 +45,8 @@ def locate_elbow(
         elbow point
     """
     kneedle = KneeLocator(
-        x[int(min_elbow) :],
-        y[int(min_elbow) :],
+        x[int(min_elbow):],
+        y[int(min_elbow):],
         S=S,
         curve=curve,
         direction=direction,

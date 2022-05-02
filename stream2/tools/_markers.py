@@ -2,9 +2,7 @@ import numpy as np
 import numba as nb
 import pandas as pd
 import scipy
-import multiprocessing
 import os
-import networkx as nx
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
@@ -31,7 +29,7 @@ def nb_unique1d(ar):
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
         mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
         mask[aux_firstnan] = True
-        mask[aux_firstnan + 1 :] = False
+        mask[aux_firstnan + 1:] = False
     else:
         mask[1:] = aux[1:] != aux[:-1]
 
@@ -54,8 +52,10 @@ def _xicorr(X, Y):
     _, _, b, c = nb_unique1d(Y)
     r = np.cumsum(c)[b]
     _, _, b, c = nb_unique1d(-Y)
-    l = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum())
+    cumsum = np.cumsum(c)[b]
+    return 1 - n * np.abs(np.diff(r)).sum() / (
+        2 * (cumsum * (n - cumsum)).sum()
+    )
 
 
 @nb.njit
@@ -67,8 +67,10 @@ def _xicorr_inner(X, Y, n):
     _, _, b, c = nb_unique1d(Y)
     r = np.cumsum(c)[b]
     _, _, b, c = nb_unique1d(-Y)
-    l = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (2 * (l * (n - l)).sum())
+    cumsum = np.cumsum(c)[b]
+    return 1 - n * np.abs(np.diff(r)).sum() / (
+        2 * (cumsum * (n - cumsum)).sum()
+    )
 
 
 @nb.njit(parallel=True)
@@ -92,7 +94,8 @@ def nb_spearman(x, Y):
 
 def pearson_corr(arr1, arr2):
     """
-    Pearson correlation along the last dimension of two multidimensional arrays.
+    Pearson correlation
+    along the last dimension of two multidimensional arrays.
     """
     mean1 = np.mean(arr1, axis=-1, keepdims=1)
     mean2 = np.mean(arr2, axis=-1, keepdims=1)
@@ -141,7 +144,7 @@ def p_val(r, n):
 
 
 def scale_marker_expr(df_marker_detection, percentile_expr):
-    ### optimal version for STREAM1
+    # optimal version for STREAM1
     ind_neg = df_marker_detection.min() < 0
     ind_pos = df_marker_detection.min() >= 0
     df_neg = df_marker_detection.loc[:, ind_neg]
@@ -149,7 +152,7 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
     if ind_neg.sum() > 0:
         print("Matrix contains negative values...")
-        ### genes with negative values
+        # genes with negative values
         minValues = df_neg.apply(
             lambda x: np.percentile(x[x < 0], 100 - percentile_expr), axis=0
         )
@@ -199,12 +202,12 @@ def detect_transition_markers(
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    #### Extract cells by provided nodes
+    # Extract cells by provided nodes
     cells, path_alias = _utils.get_path(
         adata, source, target, nodes_to_include, key
     )
 
-    #### Scale matrix with expressed markers
+    # Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
     df_sc = pd.DataFrame(
         index=adata.obs_names.tolist(),
@@ -227,7 +230,9 @@ def detect_transition_markers(
     )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
-    print(str(len(input_markers_expressed)) + " markers are being scanned ...")
+    print(
+        str(len(input_markers_expressed)) + " markers are being scanned ..."
+    )
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
@@ -248,7 +253,7 @@ def detect_transition_markers(
         values_final.mean(axis=0) - values_initial.mean(axis=0)
     )
 
-    ### original expression
+    # original expression
     df_cells_ori = deepcopy(df_marker_detection.loc[cells])
     df_cells_sort_ori = df_cells_ori.iloc[np.argsort(pseudotime_cells)]
     values_initial_ori, values_final_ori = (
@@ -310,7 +315,9 @@ def detect_transition_markers(
         df_stat_pval_qval["qval"] = q_values
         df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
         df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
-        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(
+            axis=0
+        )
         df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])

@@ -7,9 +7,16 @@ import pandas as pd
 from copy import deepcopy
 
 
-def locate_elbow(x, y, S=10, min_elbow=0,
-                 curve='convex', direction='decreasing', online=False,
-                 **kwargs):
+def locate_elbow(
+    x,
+    y,
+    S=10,
+    min_elbow=0,
+    curve="convex",
+    direction="decreasing",
+    online=False,
+    **kwargs,
+):
     """Detect knee points
 
     Parameters
@@ -39,20 +46,25 @@ def locate_elbow(x, y, S=10, min_elbow=0,
     elbow: `int`
         elbow point
     """
-    kneedle = KneeLocator(x[int(min_elbow):], y[int(min_elbow):],
-                          S=S, curve=curve,
-                          direction=direction,
-                          online=online,
-                          **kwargs,
-                          )
-    if (kneedle.elbow is None):
+    kneedle = KneeLocator(
+        x[int(min_elbow) :],
+        y[int(min_elbow) :],
+        S=S,
+        curve=curve,
+        direction=direction,
+        online=online,
+        **kwargs,
+    )
+    if kneedle.elbow is None:
         elbow = len(y)
     else:
         elbow = int(kneedle.elbow)
-    return (elbow)
+    return elbow
 
 
-def get_path(adata, source=None, target=None, nodes_to_include=None, key='epg'):
+def get_path(
+    adata, source=None, target=None, nodes_to_include=None, key="epg"
+):
     #### Extract cells by provided nodes
 
     epg_edge = adata.uns[key]["edge"]
@@ -66,17 +78,25 @@ def get_path(adata, source=None, target=None, nodes_to_include=None, key='epg'):
     if target is None:
         target = adata.uns[f"{key}_pseudotime_params"]["target"]
     if nodes_to_include is None:
-        nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
+        nodes_to_include = adata.uns[f"{key}_pseudotime_params"][
+            "nodes_to_include"
+        ]
 
     if target is not None:
         if nodes_to_include is None:
             # nodes on the shortest path
-            nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
+            nodes_sp = nx.shortest_path(
+                G, source=source, target=target, weight="len"
+            )
         else:
-            assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
+            assert isinstance(
+                nodes_to_include, list
+            ), "`nodes_to_include` must be list"
             # lists of simple paths, in order from shortest to longest
             list_paths = list(
-                nx.shortest_simple_paths(G, source=source, target=target, weight="len")
+                nx.shortest_simple_paths(
+                    G, source=source, target=target, weight="len"
+                )
             )
             flag_exist = False
             for p in list_paths:
@@ -91,18 +111,27 @@ def get_path(adata, source=None, target=None, nodes_to_include=None, key='epg'):
 
     cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
     path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
-    print(len(cells), " Cells are slected for Path_Source_Nodes-to-include_Target : ", path_alias)
+    print(
+        len(cells),
+        " Cells are slected for Path_Source_Nodes-to-include_Target : ",
+        path_alias,
+    )
     return cells, path_alias
 
-def get_expdata(adata, source=None,target=None,nodes_to_include=None, key="epg"):
+
+def get_expdata(
+    adata, source=None, target=None, nodes_to_include=None, key="epg"
+):
     cells, path_alias = get_path(adata, source, target, nodes_to_include, key)
     df_sc = pd.DataFrame(
-      index=adata.obs_names.tolist(),
-      data=adata.X,
-      columns=adata.var.index.tolist()
-      )
+        index=adata.obs_names.tolist(),
+        data=adata.X,
+        columns=adata.var.index.tolist(),
+    )
     df_cells = deepcopy(df_sc.loc[cells])
     df_cells[f"{key}_pseudotime"] = adata.obs[f"{key}_pseudotime"][cells]
-    df_cells_sort = df_cells.sort_values(by=[f"{key}_pseudotime"], ascending=True)
+    df_cells_sort = df_cells.sort_values(
+        by=[f"{key}_pseudotime"], ascending=True
+    )
 
     return df_cells_sort, path_alias
