@@ -5,9 +5,16 @@ from kneed import KneeLocator
 from scipy.sparse import csr_matrix, diags
 
 
-def locate_elbow(x, y, S=10, min_elbow=0,
-                 curve='convex', direction='decreasing', online=False,
-                 **kwargs):
+def locate_elbow(
+    x,
+    y,
+    S=10,
+    min_elbow=0,
+    curve="convex",
+    direction="decreasing",
+    online=False,
+    **kwargs
+):
     """Detect knee points
 
     Parameters
@@ -37,13 +44,16 @@ def locate_elbow(x, y, S=10, min_elbow=0,
     elbow: `int`
         elbow point
     """
-    kneedle = KneeLocator(x[int(min_elbow):], y[int(min_elbow):],
-                          S=S, curve=curve,
-                          direction=direction,
-                          online=online,
-                          **kwargs,
-                          )
-    if(kneedle.elbow is None):
+    kneedle = KneeLocator(
+        x[int(min_elbow):],
+        y[int(min_elbow):],
+        S=S,
+        curve=curve,
+        direction=direction,
+        online=online,
+        **kwargs,
+    )
+    if kneedle.elbow is None:
         elbow = len(y)
     else:
         elbow = int(kneedle.elbow)
@@ -51,10 +61,9 @@ def locate_elbow(x, y, S=10, min_elbow=0,
 
 
 def cal_tf_idf(mat):
-    """Transform a count matrix to a tf-idf representation
-    """
+    """Transform a count matrix to a tf-idf representation"""
     mat = csr_matrix(mat)
-    tf = csr_matrix(mat/(mat.sum(axis=0)))
+    tf = csr_matrix(mat / (mat.sum(axis=0)))
     idf = np.array(np.log(1 + mat.shape[1] / mat.sum(axis=1))).flatten()
     tf_idf = csr_matrix(np.dot(diags(idf), tf))
     return tf_idf

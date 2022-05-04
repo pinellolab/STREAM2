@@ -3,10 +3,10 @@ import numba as nb
 import pandas as pd
 import scipy
 import os
-import math
-from .. import _utils
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
+
+from .. import _utils
 
 
 @nb.njit
@@ -21,13 +21,15 @@ def nb_unique1d(ar):
     mask = np.empty(aux.shape, dtype=np.bool_)
     mask[:1] = True
     if aux.shape[0] > 0 and aux.dtype.kind in "cfmM" and np.isnan(aux[-1]):
-        if aux.dtype.kind == "c":  # for complex all NaNs are considered equivalent
+        if (
+            aux.dtype.kind == "c"
+        ):  # for complex all NaNs are considered equivalent
             aux_firstnan = np.searchsorted(np.isnan(aux), True, side="left")
         else:
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
         mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
         mask[aux_firstnan] = True
-        mask[aux_firstnan + 1 :] = False
+        mask[aux_firstnan + 1:] = False
     else:
         mask[1:] = aux[1:] != aux[:-1]
 
@@ -41,69 +43,45 @@ def nb_unique1d(ar):
 
 
 @nb.njit
-def normal_cdf(x):
-    #'Cumulative distribution function for the standard normal distribution'
-    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+def _xicorr(X, Y):
+    """xi correlation coefficient
+    X,Y 0 dimensional np.arrays"""
+    n = X.size
+    xi = np.argsort(X, kind="quicksort")
+    Y = Y[xi]
+    _, _, b, c = nb_unique1d(Y)
+    r = np.cumsum(c)[b]
+    _, _, b, c = nb_unique1d(-Y)
+    cumsum = np.cumsum(c)[b]
+    return 1 - n * np.abs(np.diff(r)).sum() / (
+        2 * (cumsum * (n - cumsum)).sum()
+    )
 
 
 @nb.njit
-def avg_ties(X):
-    """ Same as scipy.stats.rankdata method="average" """
-    xi = np.argsort(X)
-    xi_rank = np.argsort(xi)
-    unique, _, inverse, c_ = nb_unique1d(X)
-    unique_rank_sum = np.zeros_like(unique)
-    for i0, inv in enumerate(inverse):
-        unique_rank_sum[inv] += xi_rank[i0]
-    unique_count = np.zeros_like(unique)
-    for i0, inv in enumerate(inverse):
-        unique_count[inv] += 1
-    unique_rank_mean = unique_rank_sum / unique_count
-    rank_mean = unique_rank_mean[inverse]
-    return rank_mean + 1
-
-
-@nb.njit
-def _xicorr_inner(x, y, n):
-    """ Translated from R https://github.com/cran/XICOR/ """
-    # ---corr
-    PI = avg_ties(x)
-    fr = avg_ties(y) / n
-    gr = avg_ties(-y) / n
-    fr = fr[np.argsort(PI, kind="mergesort")]
-
-    CU = np.mean(gr * (1 - gr))
-    A1 = np.abs(np.diff(fr)).sum() / (2 * n)
-    xi = 1 - A1 / CU
-
-    # ---pval
-    qfr = np.sort(fr)
-    ind = np.arange(n) + 1
-    ind2 = np.array([2 * n - 2 * ind[i - 1] + 1 for i in ind])
-
-    ai = np.mean(ind2 * qfr * qfr) / n
-    ci = np.mean(ind2 * qfr) / n
-    cq = np.cumsum(qfr)
-
-    m = (cq + (n - ind) * qfr) / n
-    b = np.mean(m ** 2)
-    v = (ai - 2 * b + np.square(ci)) / np.square(CU)
-
-    # sd = np.sqrt(v/n)
-    pval = 1 - normal_cdf(np.sqrt(n) * xi / np.sqrt(v))
-    return xi, pval
+def _xicorr_inner(X, Y, n):
+    """Numba fast xi correlation coefficient
+    X,Y 0 dimensional np.arrays"""
+    xi = np.argsort(X, kind="quicksort")
+    Y = Y[xi]
+    _, _, b, c = nb_unique1d(Y)
+    r = np.cumsum(c)[b]
+    _, _, b, c = nb_unique1d(-Y)
+    cumsum = np.cumsum(c)[b]
+    return 1 - n * np.abs(np.diff(r)).sum() / (
+        2 * (cumsum * (n - cumsum)).sum()
+    )
 
 
 @nb.njit(parallel=True)
-def _xicorr_loop_parallel(X, y):
+def _xicorr_loop_parallel(X, Y):
     """Numba fast parallel xi correlation coefficient
     X,Y 0 dimensional np.arrays"""
     n = len(X)
     corrs = np.zeros(X.shape[1])
-    pvals = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i], pvals[i] = _xicorr_inner(X[:, i], y, n)
-    return corrs, pvals
+        corrs[i] = _xicorr_inner(X[:, i], Y, n)
+    return corrs
 
 
 def nb_spearman(x, Y):
@@ -116,7 +94,8 @@ def nb_spearman(x, Y):
 
 def pearson_corr(arr1, arr2):
     """
-    Pearson correlation along the last dimension of two multidimensional arrays.
+    Pearson correlation
+    along the last dimension of two multidimensional arrays.
     """
     mean1 = np.mean(arr1, axis=-1, keepdims=1)
     mean2 = np.mean(arr2, axis=-1, keepdims=1)
@@ -127,12 +106,14 @@ def pearson_corr(arr1, arr2):
     denom = np.sqrt(var1 * var2)
 
     # Divide numerator by denominator, but use NaN where the denominator is 0
-    return np.divide(numer, denom, out=np.full_like(numer, np.nan), where=(denom != 0))
+    return np.divide(
+        numer, denom, out=np.full_like(numer, np.nan), where=(denom != 0)
+    )
 
 
 @nb.njit(parallel=True, fastmath=True)
 def _rankdata(X):
-    """reimplementing scipy.stats.rankdata faster """
+    """reimplementing scipy.stats.rankdata faster"""
     tmp = np.zeros_like(X)
     for i in nb.prange(X.shape[0]):
         tmp[i] = _rankdata_inner(X[i])
@@ -158,12 +139,12 @@ def _rankdata_inner(x):
 
 
 def p_val(r, n):
-    t = r * np.sqrt((n - 2) / (1 - r ** 2))
+    t = r * np.sqrt((n - 2) / (1 - r**2))
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
 def scale_marker_expr(df_marker_detection, percentile_expr):
-    ### optimal version for STREAM1
+    # optimal version for STREAM1
     ind_neg = df_marker_detection.min() < 0
     ind_pos = df_marker_detection.min() >= 0
     df_neg = df_marker_detection.loc[:, ind_neg]
@@ -171,7 +152,7 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
     if ind_neg.sum() > 0:
         print("Matrix contains negative values...")
-        ### genes with negative values
+        # genes with negative values
         minValues = df_neg.apply(
             lambda x: np.percentile(x[x < 0], 100 - percentile_expr), axis=0
         )
@@ -198,17 +179,22 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
     else:
         df_pos_scaled = pd.DataFrame(index=df_pos.index)
 
-    df_marker_detection_scaled = pd.concat([df_neg_scaled, df_pos_scaled], axis=1)
+    df_marker_detection_scaled = pd.concat(
+        [df_neg_scaled, df_pos_scaled], axis=1
+    )
 
     return df_marker_detection_scaled
 
 
 def detect_transition_markers(
     adata,
+    source=None,
+    target=None,
+    nodes_to_include=None,
     percentile_expr=95,
+    n_jobs=1,
     min_num_cells=5,
-    fc_cutoff=0,
-    method="spearman",
+    fc_cutoff=1,
     key="epg",
 ):
 
@@ -216,13 +202,12 @@ def detect_transition_markers(
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    source = adata.uns[f"{key}_pseudotime_params"]["source"]
-    target = adata.uns[f"{key}_pseudotime_params"]["target"]
-    nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
-    cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
-    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
+    # Extract cells by provided nodes
+    cells, path_alias = _utils.get_path(
+        adata, source, target, nodes_to_include, key
+    )
 
-    #### Scale matrix with expressed markers
+    # Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
     df_sc = pd.DataFrame(
         index=adata.obs_names.tolist(),
@@ -240,10 +225,14 @@ def detect_transition_markers(
     ].tolist()
     df_marker_detection = df_sc[input_markers_expressed].copy()
 
-    df_scaled_marker_expr = scale_marker_expr(df_marker_detection, percentile_expr)
+    df_scaled_marker_expr = scale_marker_expr(
+        df_marker_detection, percentile_expr
+    )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
-    print(str(len(input_markers_expressed)) + " markers are being scanned ...")
+    print(
+        str(len(input_markers_expressed)) + " markers are being scanned ..."
+    )
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
@@ -253,14 +242,18 @@ def detect_transition_markers(
     dict_tg_edges = dict()
 
     id_initial = range(0, int(df_cells_sort.shape[0] * 0.2))
-    id_final = range(int(df_cells_sort.shape[0] * 0.8), int(df_cells_sort.shape[0] * 1))
+    id_final = range(
+        int(df_cells_sort.shape[0] * 0.8), int(df_cells_sort.shape[0] * 1)
+    )
     values_initial, values_final = (
         df_cells_sort.iloc[id_initial, :],
         df_cells_sort.iloc[id_final, :],
     )
-    diff_initial_final = np.abs(values_final.mean(axis=0) - values_initial.mean(axis=0))
+    diff_initial_final = np.abs(
+        values_final.mean(axis=0) - values_initial.mean(axis=0)
+    )
 
-    ### original expression
+    # original expression
     df_cells_ori = deepcopy(df_marker_detection.loc[cells])
     df_cells_sort_ori = df_cells_ori.iloc[np.argsort(pseudotime_cells)]
     values_initial_ori, values_final_ori = (
@@ -269,10 +262,18 @@ def detect_transition_markers(
     )
 
     ix_pos = diff_initial_final > 0
-    logfc = pd.Series(np.zeros(len(diff_initial_final)), index=diff_initial_final.index)
+    logfc = pd.Series(
+        np.zeros(len(diff_initial_final)), index=diff_initial_final.index
+    )
     logfc[ix_pos] = np.log2(
-        (np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
-        / (np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0)) + 0.01)
+        (
+            np.maximum(values_final.mean(axis=0), values_initial.mean(axis=0))
+            + 0.01
+        )
+        / (
+            np.minimum(values_final.mean(axis=0), values_initial.mean(axis=0))
+            + 0.01
+        )
     )
 
     ix_cutoff = np.array(logfc > fc_cutoff)
@@ -300,34 +301,23 @@ def detect_transition_markers(
             ],
             index=df_cells_sort.columns[ix_cutoff],
         )
-
-        if method == "spearman":
-            df_stat_pval_qval["stat"] = nb_spearman(
-                np.array(pseudotime_cells_sort),
-                np.array(df_cells_sort.iloc[:, ix_cutoff]),
-            )
-            df_stat_pval_qval["pval"] = p_val(
-                df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
-            )
-        elif method == "xi":
-            ### /!\ dont use df_cells_sort and pseudotime_cells_sort, breaks xicorr
-            res = _xicorr_loop_parallel(
-                np.array(df_cells.iloc[:, ix_cutoff]),
-                np.array(pseudotime_cells),
-            )
-            df_stat_pval_qval["stat"] = res[0]
-            df_stat_pval_qval["pval"] = res[1]
-        else:
-            raise ValueError("method must be one of 'spearman', 'xi'")
-
+        df_stat_pval_qval["stat"] = nb_spearman(
+            np.array(pseudotime_cells_sort),
+            np.array(df_cells_sort.iloc[:, ix_cutoff]),
+        )
         df_stat_pval_qval["logfc"] = logfc
+        df_stat_pval_qval["pval"] = p_val(
+            df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
+        )
 
         p_values = df_stat_pval_qval["pval"]
         q_values = multipletests(p_values, method="fdr_bh")[1]
         df_stat_pval_qval["qval"] = q_values
         df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
         df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
-        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(
+            axis=0
+        )
         df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
@@ -335,7 +325,11 @@ def detect_transition_markers(
         dict_tg_edges[path_alias].to_csv(
             os.path.join(
                 file_path,
-                "transition_markers_path_" + str(source) + "-" + str(target) + ".tsv",
+                "transition_markers_path_"
+                + str(source)
+                + "-"
+                + str(target)
+                + ".tsv",
             ),
             sep="\t",
             index=True,

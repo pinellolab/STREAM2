@@ -4,7 +4,10 @@ import numpy as np
 import networkx as nx
 
 
-def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg"):
+
+def infer_pseudotime(
+    adata, source, target=None, nodes_to_include=None, key="epg"
+):
     """Infer pseudotime
     Parameters
     ----------
@@ -23,12 +26,18 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
     if target is not None:
         if nodes_to_include is None:
             # nodes on the shortest path
-            nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
+            nodes_sp = nx.shortest_path(
+                G, source=source, target=target, weight="len"
+            )
         else:
-            assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
+            assert isinstance(
+                nodes_to_include, list
+            ), "`nodes_to_include` must be list"
             # lists of simple paths, in order from shortest to longest
             list_paths = list(
-                nx.shortest_simple_paths(G, source=source, target=target, weight="len")
+                nx.shortest_simple_paths(
+                    G, source=source, target=target, weight="len"
+                )
             )
             flag_exist = False
             for p in list_paths:
@@ -42,7 +51,8 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
         nodes_sp = [source] + [v for u, v in nx.bfs_edges(G, source)]
     G_sp = G.subgraph(nodes_sp).copy()
     index_nodes = {
-        x: nodes_sp.index(x) if x in nodes_sp else G.number_of_nodes() for x in G.nodes
+        x: nodes_sp.index(x) if x in nodes_sp else G.number_of_nodes()
+        for x in G.nodes
     }
 
     if target is None:
@@ -62,6 +72,7 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
                 ),
             )
         )
+
 
     cells = np.isin(adata.obs[f"{key}_node_id"], nodes_sp)
     id_edges_cell = adata.obs.loc[cells, f"{key}_edge_id"].tolist()
@@ -91,4 +102,3 @@ def infer_pseudotime(adata, source, target=None, nodes_to_include=None, key="epg
         "target": target,
         "nodes_to_include": nodes_to_include,
     }
-

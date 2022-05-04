@@ -51,7 +51,7 @@ class Stream2Config:
         rc: `dict`,optional (default: None)
             rc settings properties.
             Parameter mappings to override the values in the preset style.
-            Please see https://matplotlib.org/tutorials/introductory/customizing.html#a-sample-matplotlibrc-file
+            Please see https://matplotlib.org/tutorials/introductory/customizing.html#a-sample-matplotlibrc-file # noqa
         """
         # mpl.rcParams.update(mpl.rcParamsDefault)
         sns.set(context=context,

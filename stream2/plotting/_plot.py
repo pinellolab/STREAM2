@@ -14,9 +14,14 @@ from pandas.api.types import (
     is_categorical_dtype,
 )
 import plotly.express as px
-
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import statsmodels.api as sm
 from .._settings import settings
 from ._utils import generate_palette
+from .. import _utils
+
+lowess = sm.nonparametric.lowess
 
 
 def violin(
@@ -36,8 +41,7 @@ def violin(
     fig_name="plot_violin.pdf",
     **kwargs,
 ):
-    """Violin plot
-    """
+    """Violin plot"""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -71,7 +75,12 @@ def violin(
             ax_i = fig.add_subplot(fig_nrow, fig_ncol, i + 1)
             sns.violinplot(ax=ax_i, y=obs, data=df_plot, inner=None, **kwargs)
             sns.stripplot(
-                ax=ax_i, y=obs, data=df_plot, color="black", jitter=jitter, s=size
+                ax=ax_i,
+                y=obs,
+                data=df_plot,
+                color="black",
+                jitter=jitter,
+                s=size,
             )
 
             ax_i.set_title(obs)
@@ -85,7 +94,9 @@ def violin(
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             plt.savefig(
-                os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+                os.path.join(fig_path, fig_name),
+                pad_inches=1,
+                bbox_inches="tight",
             )
             plt.close(fig)
     if len(list_var) > 0:
@@ -104,7 +115,12 @@ def violin(
             ax_i = fig.add_subplot(fig_nrow, fig_ncol, i + 1)
             sns.violinplot(ax=ax_i, y=var, data=df_plot, inner=None, **kwargs)
             sns.stripplot(
-                ax=ax_i, y=var, data=df_plot, color="black", jitter=jitter, s=size
+                ax=ax_i,
+                y=var,
+                data=df_plot,
+                color="black",
+                jitter=jitter,
+                s=size,
             )
 
             ax_i.set_title(var)
@@ -118,7 +134,9 @@ def violin(
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             plt.savefig(
-                os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+                os.path.join(fig_path, fig_name),
+                pad_inches=1,
+                bbox_inches="tight",
             )
             plt.close(fig)
 
@@ -140,8 +158,7 @@ def hist(
     fig_name="plot_violin.pdf",
     **kwargs,
 ):
-    """histogram plot
-    """
+    """histogram plot"""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -184,7 +201,9 @@ def hist(
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             plt.savefig(
-                os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+                os.path.join(fig_path, fig_name),
+                pad_inches=1,
+                bbox_inches="tight",
             )
             plt.close(fig)
     if len(list_var) > 0:
@@ -211,7 +230,9 @@ def hist(
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             plt.savefig(
-                os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight"
+                os.path.join(fig_path, fig_name),
+                pad_inches=1,
+                bbox_inches="tight",
             )
             plt.close(fig)
 
@@ -228,8 +249,7 @@ def pca_variance_ratio(
     w_pad=None,
     h_pad=None,
 ):
-    """Plot the variance ratio.
-    """
+    """Plot the variance ratio."""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -242,7 +262,9 @@ def pca_variance_ratio(
 
     fig = plt.figure(figsize=fig_size)
     if log:
-        plt.plot(range(n_components), np.log(adata.uns["pca"]["variance_ratio"]))
+        plt.plot(
+            range(n_components), np.log(adata.uns["pca"]["variance_ratio"])
+        )
     else:
         plt.plot(range(n_components), adata.uns["pca"]["variance_ratio"])
     if show_cutoff:
@@ -257,7 +279,11 @@ def pca_variance_ratio(
     if save_fig:
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
-        plt.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
+        plt.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
         plt.close(fig)
 
 
@@ -275,8 +301,7 @@ def pcs_features(
     w_pad=None,
     h_pad=None,
 ):
-    """Plot features that contribute to the top PCs.
-    """
+    """Plot features that contribute to the top PCs."""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -289,20 +314,32 @@ def pcs_features(
     n_features = adata.uns["pca"]["PCs"].shape[0]
 
     fig_nrow = int(np.ceil(n_pcs / fig_ncol))
-    fig = plt.figure(figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow))
+    fig = plt.figure(
+        figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow)
+    )
 
     for i in range(n_pcs):
         ax_i = fig.add_subplot(fig_nrow, fig_ncol, i + 1)
         if log:
             ax_i.scatter(
                 range(n_features),
-                np.log(np.sort(np.abs(adata.uns["pca"]["PCs"][:, i],))[::-1]),
+                np.log(
+                    np.sort(
+                        np.abs(
+                            adata.uns["pca"]["PCs"][:, i],
+                        )
+                    )[::-1]
+                ),
                 s=size,
             )
         else:
             ax_i.scatter(
                 range(n_features),
-                np.sort(np.abs(adata.uns["pca"]["PCs"][:, i],))[::-1],
+                np.sort(
+                    np.abs(
+                        adata.uns["pca"]["PCs"][:, i],
+                    )
+                )[::-1],
                 s=size,
             )
         n_ft_selected_i = len(adata.uns["pca"]["features"][f"pc_{i}"])
@@ -318,7 +355,11 @@ def pcs_features(
     if save_fig:
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
-        plt.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
+        plt.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
         plt.close(fig)
 
 
@@ -336,8 +377,7 @@ def variable_genes(
     w_pad=None,
     h_pad=None,
 ):
-    """Plot highly variable genes.
-    """
+    """Plot highly variable genes."""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -384,7 +424,11 @@ def variable_genes(
     if save_fig:
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
-        fig.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
+        fig.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
         plt.close(fig)
 
 
@@ -508,12 +552,21 @@ def _scatterplot2d(
     if len(list_hue) < fig_ncol:
         fig_ncol = len(list_hue)
     fig_nrow = int(np.ceil(len(list_hue) / fig_ncol))
-    fig = plt.figure(figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow))
+    fig = plt.figure(
+        figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow)
+    )
     for i, hue in enumerate(list_hue):
         ax_i = fig.add_subplot(fig_nrow, fig_ncol, i + 1)
         if hue is None:
             sc_i = sns.scatterplot(
-                ax=ax_i, x=x, y=y, data=df, alpha=alpha, linewidth=0, s=size, **kwargs
+                ax=ax_i,
+                x=x,
+                y=y,
+                data=df,
+                alpha=alpha,
+                linewidth=0,
+                s=size,
+                **kwargs,
             )
         else:
             if is_string_dtype(df[hue]) or is_categorical_dtype(df[hue]):
@@ -572,7 +625,9 @@ def _scatterplot2d(
                     alpha=alpha,
                     s=size,
                 )
-                cbar = plt.colorbar(sc_i, ax=ax_i, pad=0.01, fraction=0.05, aspect=40)
+                cbar = plt.colorbar(
+                    sc_i, ax=ax_i, pad=0.01, fraction=0.05, aspect=40
+                )
                 cbar.solids.set_edgecolor("face")
                 cbar.ax.locator_params(nbins=5)
         ax_i.set_xlabel(x)
@@ -586,7 +641,11 @@ def _scatterplot2d(
     if save_fig:
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
-        plt.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
+        plt.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
         plt.close(fig)
     if copy:
         return list_ax
@@ -697,7 +756,9 @@ def _scatterplot2d_plotly(
     if len(list_hue) < fig_ncol:
         fig_ncol = len(list_hue)
     fig_nrow = int(np.ceil(len(list_hue) / fig_ncol))
-    fig = plt.figure(figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow))
+    fig = plt.figure(
+        figsize=(fig_size[0] * fig_ncol * 1.05, fig_size[1] * fig_nrow)
+    )
     for hue in list_hue:
         if hue in hue_palette.keys():
             palette = hue_palette[hue]
@@ -719,7 +780,9 @@ def _scatterplot2d_plotly(
             color_discrete_map=palette,
             **kwargs,
         )
-        fig.update_layout(legend={"itemsizing": "constant"}, width=500, height=500)
+        fig.update_layout(
+            legend={"itemsizing": "constant"}, width=500, height=500
+        )
         fig.show(renderer="notebook")
 
 
@@ -751,7 +814,7 @@ def umap(
     plotly=False,
     **kwargs,
 ):
-    """ Plot coordinates in UMAP
+    """Plot coordinates in UMAP
 
     Parameters
     ----------
@@ -831,7 +894,9 @@ def umap(
     df_plot = pd.DataFrame(
         index=adata.obs.index,
         data=adata.obsm["X_umap"],
-        columns=["UMAP" + str(x + 1) for x in range(adata.obsm["X_umap"].shape[1])],
+        columns=[
+            "UMAP" + str(x + 1) for x in range(adata.obsm["X_umap"].shape[1])
+        ],
     )
     if color is None:
         _scatterplot2d(
@@ -860,17 +925,23 @@ def umap(
                         adata.uns["color"] = dict()
 
                     if ann not in dict_palette.keys():
-                        if (ann + "_color" in adata.uns["color"].keys()) and (
-                            all(
-                                np.isin(
-                                    np.unique(df_plot[ann]),
-                                    list(adata.uns["color"][ann + "_color"].keys()),
-                                )
+                        if (
+                            ann + "_color" in adata.uns["color"].keys()
+                        ) and all(
+                            np.isin(
+                                np.unique(df_plot[ann]),
+                                list(
+                                    adata.uns["color"][ann + "_color"].keys()
+                                ),
                             )
                         ):
-                            dict_palette[ann] = adata.uns["color"][ann + "_color"]
+                            dict_palette[ann] = adata.uns["color"][
+                                ann + "_color"
+                            ]
                         else:
-                            dict_palette[ann] = generate_palette(adata.obs[ann])
+                            dict_palette[ann] = generate_palette(
+                                adata.obs[ann]
+                            )
                             adata.uns["color"][ann + "_color"] = dict_palette[
                                 ann
                             ].copy()
@@ -1021,17 +1092,23 @@ def graph(
                         adata.uns["color"] = dict()
 
                     if ann not in dict_palette.keys():
-                        if (ann + "_color" in adata.uns["color"].keys()) and (
-                            all(
-                                np.isin(
-                                    np.unique(df_plot[ann]),
-                                    list(adata.uns["color"][ann + "_color"].keys()),
-                                )
+                        if (
+                            ann + "_color" in adata.uns["color"].keys()
+                        ) and all(
+                            np.isin(
+                                np.unique(df_plot[ann]),
+                                list(
+                                    adata.uns["color"][ann + "_color"].keys()
+                                ),
                             )
                         ):
-                            dict_palette[ann] = adata.uns["color"][ann + "_color"]
+                            dict_palette[ann] = adata.uns["color"][
+                                ann + "_color"
+                            ]
                         else:
-                            dict_palette[ann] = generate_palette(adata.obs[ann])
+                            dict_palette[ann] = generate_palette(
+                                adata.obs[ann]
+                            )
                             adata.uns["color"][ann + "_color"] = dict_palette[
                                 ann
                             ].copy()
@@ -1074,7 +1151,9 @@ def graph(
 
     for ax in list_ax:
         if show_node:
-            ax.scatter(node_pos[:, comp1 - 1], node_pos[:, comp2 - 1], c="black")
+            ax.scatter(
+                node_pos[:, comp1 - 1], node_pos[:, comp2 - 1], c="black"
+            )
         if show_text:
             for i in np.arange(node_pos.shape[0]):
                 ax.text(
@@ -1086,10 +1165,98 @@ def graph(
                     va="bottom",
                 )
         for edge_i in G.edges():
-            ax.plot(node_pos[edge_i, comp1 - 1], node_pos[edge_i, comp2 - 1], c="black")
+            ax.plot(
+                node_pos[edge_i, comp1 - 1],
+                node_pos[edge_i, comp2 - 1],
+                c="black",
+            )
     if save_fig:
         fig = plt.gcf()
         if not os.path.exists(fig_path):
             os.makedirs(fig_path)
-        fig.savefig(os.path.join(fig_path, fig_name), pad_inches=1, bbox_inches="tight")
+        fig.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
         plt.close(fig)
+
+
+def plot_features_in_pseudotime(
+    adatas,
+    assays,
+    features,
+    source=None,
+    target=None,
+    nodes_to_include=None,
+    frac=0.2,
+    key="epg",
+):
+    fig = make_subplots(
+        rows=len(features), cols=len(adatas), subplot_titles=assays
+    )
+
+    for i in range(len(adatas)):
+        df, path_alias = _utils.get_expdata(
+            adatas[i], source, target, nodes_to_include, key
+        )
+        for j in range(len(features)):
+            feature = features[j]
+            fig.add_trace(
+                go.Scatter(
+                    x=df[f"{key}_pseudotime"],
+                    y=df[feature],
+                    opacity=0.8,
+                    mode="markers",
+                    name=assays[i],
+                ),
+                row=j + 1,
+                col=i + 1,
+            )
+
+            y_lowess = lowess(df[feature], df[f"{key}_pseudotime"], frac=frac)
+            fig.add_trace(
+                go.Scatter(
+                    x=y_lowess[:, 0],
+                    y=y_lowess[:, 1],
+                    name=" ",
+                    line=dict(color="black"),
+                ),
+                row=j + 1,
+                col=i + 1,
+            )
+            fig.update_xaxes(title_text="pseudotime", row=j + 1, col=i + 1)
+            fig.update_yaxes(title_text=str(feature), row=j + 1, col=i + 1)
+
+    fig.update_layout(
+        dict(
+            height=400,
+            width=1000,
+            plot_bgcolor="white",
+            title_text=str(path_alias),
+        )
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridwidth=1,
+        gridcolor="lightgrey",
+        zeroline=True,
+        zerolinewidth=1,
+        zerolinecolor="lightgrey",
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridwidth=1,
+        gridcolor="lightgrey",
+        zeroline=True,
+        zerolinewidth=1,
+        zerolinecolor="lightgrey",
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+    )
+    fig.update_traces(marker=dict(size=3))
+    return fig

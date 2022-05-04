@@ -2,7 +2,7 @@
 
 from ._general import (
     log_transform,
-    normalize,    
+    normalize,
 )
 from ._qc import (
     cal_qc,
@@ -13,13 +13,12 @@ from ._qc import (
     filter_cells_atac,
     filter_features,
     filter_genes,
-    filter_peaks,   
+    filter_peaks,
 )
 from ._pca import (
     pca,
     select_pcs,
-    select_pcs_features,    
+    select_pcs_features,
 )
-from ._variable_genes import (
-    select_variable_genes
-)
+from ._variable_genes import select_variable_genes
+from ._atac_chromVar import atac_chromVar
