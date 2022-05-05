@@ -239,8 +239,8 @@ def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
     # --- Init parameters, variables
     Mu = adata.uns[key]["params"]["epg_mu"]
     Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if nnodes is None:
-        nnodes = min(16, max(6, len(init_nodes_pos) / 20))
+    if n_nodes is None:
+        n_nodes = min(16, max(6, len(init_nodes_pos) / 20))
     if use_weights:
         weights = adata.obs["pointweights"]
 
