@@ -4,7 +4,6 @@ import numpy as np
 import networkx as nx
 
 
-
 def infer_pseudotime(
     adata, source, target=None, nodes_to_include=None, key="epg"
 ):
@@ -56,7 +55,9 @@ def infer_pseudotime(
     }
 
     if target is None:
-        dict_dist_to_source = nx.shortest_path_length(G_sp, source=source, weight="len")
+        dict_dist_to_source = nx.shortest_path_length(
+            G_sp, source=source, weight="len"
+        )
     else:
         dict_dist_to_source = dict(
             zip(
@@ -65,14 +66,15 @@ def infer_pseudotime(
                     np.array(
                         [0.0]
                         + [
-                            G.get_edge_data(nodes_sp[i], nodes_sp[i + 1])["len"]
+                            G.get_edge_data(nodes_sp[i], nodes_sp[i + 1])[
+                                "len"
+                            ]
                             for i in range(len(nodes_sp) - 1)
                         ]
                     )
                 ),
             )
         )
-
 
     cells = np.isin(adata.obs[f"{key}_node_id"], nodes_sp)
     id_edges_cell = adata.obs.loc[cells, f"{key}_edge_id"].tolist()

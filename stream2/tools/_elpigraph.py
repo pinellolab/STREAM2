@@ -65,9 +65,13 @@ def learn_graph(
         elif type(use_partition) is list:
             partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool or a list of partitions")
+            raise ValueError(
+                "use_partition should be a bool or a list of partitions"
+            )
         if ordinal_labels is not None:
-            raise ValueError("use_partition can't be used together with ordinal_labels")
+            raise ValueError(
+                "use_partition can't be used together with ordinal_labels"
+            )
 
         merged_nodep = []
         merged_edges = []
@@ -109,10 +113,12 @@ def learn_graph(
         adata.uns["epg"]["node_pos"] = np.concatenate(merged_nodep)
         adata.uns["epg"]["edge"] = np.concatenate((merged_edges))
         adata.uns["epg"]["node_partition"] = np.repeat(
-            adata.obs["partition"].unique(), [len(nodep) for nodep in merged_nodep]
+            adata.obs["partition"].unique(),
+            [len(nodep) for nodep in merged_nodep],
         ).astype(str)
         adata.uns["epg"]["edge_partition"] = np.repeat(
-            adata.obs["partition"].unique(), [len(edges) for edges in merged_edges]
+            adata.obs["partition"].unique(),
+            [len(edges) for edges in merged_edges],
         ).astype(str)
         adata.uns["epg"]["params"] = p_adata.uns["epg"]["params"]
 
@@ -183,7 +189,11 @@ def _learn_graph(
         Node positions.
     """
 
-    assert method in ["principal_curve", "principal_tree", "principal_circle"], (
+    assert method in [
+        "principal_curve",
+        "principal_tree",
+        "principal_circle",
+    ], (
         "`method` must be one of "
         "['principal_curve','principal_tree','principal_circle']"
     )
@@ -400,7 +410,9 @@ def seed_graph(
         elif type(use_partition) is list:
             partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool or a list of partitions")
+            raise ValueError(
+                "use_partition should be a bool or a list of partitions"
+            )
 
         merged_nodep = []
         merged_edges = []
@@ -445,7 +457,8 @@ def seed_graph(
             [len(nodep) for nodep in merged_nodep],
         ).astype(str)
         adata.uns["seed_epg"]["edge_partition"] = np.repeat(
-            adata.obs["partition"].unique(), [len(edges) for edges in merged_edges]
+            adata.obs["partition"].unique(),
+            [len(edges) for edges in merged_edges],
         ).astype(str)
         adata.uns["seed_epg"]["params"] = p_adata.uns["seed_epg"]["params"]
 
@@ -595,7 +608,10 @@ def _seed_graph(
         # ap = AffinityPropagation(damping=damping).fit(mat)
         if ap.cluster_centers_.shape[0] > max_n_clusters:
             if verbose:
-                print("The number of clusters is " + str(ap.cluster_centers_.shape[0]))
+                print(
+                    "The number of clusters is "
+                    + str(ap.cluster_centers_.shape[0])
+                )
             if verbose:
                 print(
                     "Too many clusters are generated, please lower pref_perc or increase damping and retry it"
@@ -630,9 +646,9 @@ def _seed_graph(
                 )
         else:
             weights = None
-        kmeans = KMeans(n_clusters=n_clusters, init="k-means++", random_state=42).fit(
-            mat, sample_weight=weights
-        )
+        kmeans = KMeans(
+            n_clusters=n_clusters, init="k-means++", random_state=42
+        ).fit(mat, sample_weight=weights)
         cluster_labels = kmeans.labels_
         init_nodes_pos = kmeans.cluster_centers_
     else:
@@ -645,13 +661,18 @@ def _seed_graph(
         print("Calculating minimum spanning tree...")
 
     # ---if supervised adjacency matrix option
-    if (((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None) or (
-        ((len(paths) == 0) and (len(paths_forbidden) == 0)) and label is not None
+    if (
+        ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None
+    ) or (
+        ((len(paths) == 0) and (len(paths_forbidden) == 0))
+        and label is not None
     ):
         raise ValueError(
             "Both a label key (label: str) and cluster paths (paths: list of list) need to be provided for path-supervised initialization"
         )
-    elif ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is not None:
+    elif (
+        (len(paths) > 0) or (len(paths_forbidden) > 0)
+    ) and label is not None:
         (
             init_nodes_pos,
             clus_adjmat,
@@ -740,7 +761,9 @@ def _store_graph_attributes(adata, mat, key):
 def _get_branch_id(adata, key="epg"):
     """ add adata.obs['branch_id'] """
     # get branches
-    net = elpigraph.src.graphs.ConstructGraph({"Edges": [adata.uns[key]["edge"]]})
+    net = elpigraph.src.graphs.ConstructGraph(
+        {"Edges": [adata.uns[key]["edge"]]}
+    )
     branches = elpigraph.src.graphs.GetSubGraph(net, "branches")
     _dict_branches = {
         (b[0], b[-1]): b for i, b in enumerate(branches)
@@ -784,7 +807,9 @@ def _force_missing_connections(
     while found_missing:
 
         found_missing = False
-        edges_labels = np.array(list(num_labels.keys()))[num_modes][init_edges].tolist()
+        edges_labels = np.array(list(num_labels.keys()))[num_modes][
+            init_edges
+        ].tolist()
         for path in paths:
             for i in range(len(path) - 1):
                 if [path[i], path[i + 1]] not in edges_labels and [
@@ -795,7 +820,9 @@ def _force_missing_connections(
                     print(num_labels[path[i]], num_labels[path[i + 1]])
 
                     missing_is = np.where(num_modes == num_labels[path[i]])[0]
-                    missing_js = np.where(num_modes == num_labels[path[i + 1]])[0]
+                    missing_js = np.where(
+                        num_modes == num_labels[path[i + 1]]
+                    )[0]
                     x = D[missing_is[:, None], missing_js]
                     _i, _j = np.where(x == x.min())
                     mi, mj = missing_is[_i], missing_js[_j]
@@ -824,9 +851,14 @@ def _get_partition_modes(mat, init_nodes_pos, labels):
 
 def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
     """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
-    num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
+    num_labels = {
+        s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
+    }
     adjmat = np.zeros(
-        (len(labels_u) + len(labels_ignored), len(labels_u) + len(labels_ignored)),
+        (
+            len(labels_u) + len(labels_ignored),
+            len(labels_u) + len(labels_ignored),
+        ),
         dtype=int,
     )
 
@@ -888,19 +920,25 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
         print(
             f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
         )
-        centroids = np.vstack([mat[labels == s].mean(axis=0) for s in labels_miss])
+        centroids = np.vstack(
+            [mat[labels == s].mean(axis=0) for s in labels_miss]
+        )
         init_nodes_pos = np.vstack((init_nodes_pos, centroids))
         modes = np.hstack((modes, labels_miss))
         num_modes = np.array([num_labels[m] for m in modes])
 
     # nodes adjacency matrix
-    clus_adjmat = _get_clus_adjmat(adjmat, num_modes, n_clusters=len(init_nodes_pos))
+    clus_adjmat = _get_clus_adjmat(
+        adjmat, num_modes, n_clusters=len(init_nodes_pos)
+    )
     return init_nodes_pos, clus_adjmat, adjmat, num_modes, num_labels
 
 
 def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
     """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
-    num_labels = {s: i for i, s in enumerate(np.append(labels_u, labels_ignored))}
+    num_labels = {
+        s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
+    }
     len_labels = len(labels_u) + len(labels_ignored)
     adjmat = np.zeros((len_labels, len_labels))
 
@@ -939,12 +977,15 @@ def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
             clus_ei = np.where(num_modes == ei)[0]
             clus_ej = np.where(num_modes == ej)[0]
             adjmat_clus[
-                clus_ei[:, None], np.repeat(clus_ej[None], len(clus_ei), axis=0)
+                clus_ei[:, None],
+                np.repeat(clus_ej[None], len(clus_ei), axis=0),
             ] = (1 - factor) + adjmat_strength[ei, ej] * factor
     return adjmat_clus
 
 
-def _categorical_adjmat2(mat, init_nodes_pos, paths, paths_forbidden, labels, factor):
+def _categorical_adjmat2(
+    mat, init_nodes_pos, paths, paths_forbidden, labels, factor
+):
     """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
 
     labels_u = np.unique([c for p in paths for c in p])
@@ -976,14 +1017,19 @@ def _categorical_adjmat2(mat, init_nodes_pos, paths, paths_forbidden, labels, fa
         print(
             f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
         )
-        centroids = np.vstack([mat[labels == s].mean(axis=0) for s in labels_miss])
+        centroids = np.vstack(
+            [mat[labels == s].mean(axis=0) for s in labels_miss]
+        )
         init_nodes_pos = np.vstack((init_nodes_pos, centroids))
         modes = np.hstack((modes, labels_miss))
         num_modes = np.array([num_labels[m] for m in modes])
 
     # nodes adjacency matrix
     clus_adjmat = _get_clus_adjmat2(
-        adjmat_strength, num_modes, n_clusters=len(init_nodes_pos), factor=factor
+        adjmat_strength,
+        num_modes,
+        n_clusters=len(init_nodes_pos),
+        factor=factor,
     )
     return (
         init_nodes_pos,

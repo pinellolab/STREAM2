@@ -69,7 +69,9 @@ def add_loops(
         elif type(use_partition) is list:
             partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool or a list of partitions")
+            raise ValueError(
+                "use_partition should be a bool or a list of partitions"
+            )
 
         merged_nodep = []
         merged_edges = []
@@ -232,7 +234,9 @@ def _add_loops(
             _store_graph_attributes(adata, X, key)
 
 
-def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
+def add_path(
+    adata, source, target, n_nodes=None, use_weights=False, key="epg"
+):
 
     X = _get_graph_data(adata, key)
     init_nodes_pos, init_edges = (
@@ -253,7 +257,9 @@ def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
         X, init_nodes_pos, 10 ** 6, SquaredX=SquaredX
     )
     clus = (part == source) | (part == target)
-    X_fit = np.vstack((init_nodes_pos[source], init_nodes_pos[target], X[clus.flat]))
+    X_fit = np.vstack(
+        (init_nodes_pos[source], init_nodes_pos[target], X[clus.flat])
+    )
 
     # --- fit path
     _adata = sc.AnnData(X_fit)
@@ -346,12 +352,18 @@ def del_path(
 
     if nodes_to_include is None:
         # nodes on the shortest path
-        nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
+        nodes_sp = nx.shortest_path(
+            G, source=source, target=target, weight="len"
+        )
     else:
-        assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
+        assert isinstance(
+            nodes_to_include, list
+        ), "`nodes_to_include` must be list"
         # lists of simple paths, in order from shortest to longest
         list_paths = list(
-            nx.shortest_simple_paths(G, source=source, target=target, weight="len")
+            nx.shortest_simple_paths(
+                G, source=source, target=target, weight="len"
+            )
         )
         flag_exist = False
         for p in list_paths:
@@ -375,14 +387,24 @@ def del_path(
     # --- get nodep, edges, create new graph with added loop
     nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
 
-    cycle_edges = elpigraph._graph_editing.find_all_cycles(nx.Graph(edges.tolist()))[0]
+    cycle_edges = elpigraph._graph_editing.find_all_cycles(
+        nx.Graph(edges.tolist())
+    )[0]
 
     Mus = np.repeat(Mu, len(nodep))
     Mus[cycle_edges] = Mu / 10000
     ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
         edges, Lambdas=Lambda, Mus=Mus
     )
-    (newnodep, _, _, _, _, _, _,) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+    (
+        newnodep,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
         X, nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
     )
 

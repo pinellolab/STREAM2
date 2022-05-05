@@ -9,6 +9,7 @@ from statsmodels.sandbox.stats.multicomp import multipletests
 
 from . import infer_pseudotime
 
+
 @nb.njit
 def nb_unique1d(ar):
     """
@@ -29,7 +30,7 @@ def nb_unique1d(ar):
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
         mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
         mask[aux_firstnan] = True
-        mask[aux_firstnan + 1:] = False
+        mask[aux_firstnan + 1 :] = False
     else:
         mask[1:] = aux[1:] != aux[:-1]
 
@@ -57,6 +58,7 @@ def _xicorr(X, Y):
         2 * (cumsum * (n - cumsum)).sum()
     )
 
+
 @nb.njit
 def normal_cdf(x):
     #'Cumulative distribution function for the standard normal distribution'
@@ -78,6 +80,7 @@ def avg_ties(X):
     unique_rank_mean = unique_rank_sum / unique_count
     rank_mean = unique_rank_mean[inverse]
     return rank_mean + 1
+
 
 @nb.njit
 def _xicorr_inner(x, y, n):
@@ -108,7 +111,6 @@ def _xicorr_inner(x, y, n):
     # sd = np.sqrt(v/n)
     pval = 1 - normal_cdf(np.sqrt(n) * xi / np.sqrt(v))
     return xi, pval
-
 
 
 @nb.njit(parallel=True)
@@ -178,7 +180,7 @@ def _rankdata_inner(x):
 
 
 def p_val(r, n):
-    t = r * np.sqrt((n - 2) / (1 - r**2))
+    t = r * np.sqrt((n - 2) / (1 - r ** 2))
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
@@ -242,7 +244,13 @@ def detect_transition_markers(
         os.makedirs(file_path)
 
     # Extract cells by provided nodes
-    infer_pseudotime(adata,source=source,target=target,nodes_to_include=nodes_to_include,key=key)
+    infer_pseudotime(
+        adata,
+        source=source,
+        target=target,
+        nodes_to_include=nodes_to_include,
+        key=key,
+    )
     cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
     path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
 
@@ -269,9 +277,7 @@ def detect_transition_markers(
     )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
-    print(
-        str(len(input_markers_expressed)) + " markers are being scanned ..."
-    )
+    print(str(len(input_markers_expressed)) + " markers are being scanned ...")
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
@@ -360,16 +366,13 @@ def detect_transition_markers(
         else:
             raise ValueError("method must be one of 'spearman', 'xi'")
 
-
         df_stat_pval_qval["logfc"] = logfc
         p_values = df_stat_pval_qval["pval"]
         q_values = multipletests(p_values, method="fdr_bh")[1]
         df_stat_pval_qval["qval"] = q_values
         df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
         df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
-        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(
-            axis=0
-        )
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
         df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])

@@ -60,7 +60,6 @@ def locate_elbow(
     return elbow
 
 
-
 def get_path(
     adata, source=None, target=None, nodes_to_include=None, key="epg"
 ):
@@ -116,7 +115,6 @@ def get_path(
         path_alias,
     )
     return cells, path_alias
-
 
 
 def get_expdata(
