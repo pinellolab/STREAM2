@@ -357,10 +357,12 @@ def seed_graph(
         used to learn the graph
     layer: `str`, optional (default: None)
         The layer used to learn the graph
-    init_nodes_pos: `array`, shape = [n_nodes,n_dimension], optional (default: `None`)
+    init_nodes_pos: `array`, shape = [n_nodes,n_dimension],
+        optional (default: `None`)
         initial node positions
     init_edges: `array`, shape = [n_edges,2], optional (default: `None`)
-        initial edges, all the initial nodes should be included in the tree structure
+        initial edges, all the initial nodes should be included
+        in the tree structure
     clustering: `str`, optional (default: 'kmeans')
         Choose from {{'ap','kmeans','sc'}}
         clustering method used to infer the initial nodes.
@@ -373,7 +375,8 @@ def seed_graph(
         Preference percentile (between 0 and 100).
         The percentile of the input similarities for affinity propagation.
     n_clusters: `int`, optional (default: 10)
-        Number of clusters (only valid once 'clustering' is specificed as 'sc' or 'kmeans').
+        Number of clusters (only valid once 'clustering'
+        is specified as 'sc' or 'kmeans').
     max_n_clusters: `int`, optional (default: 200)
         The allowed maximum number of clusters for 'ap'.
     n_neighbors: `int`, optional (default: 50)
@@ -400,7 +403,8 @@ def seed_graph(
     adata.obs: `pandas.core.frame.DataFrame` (`adata.obs`)
         Update adata.obs with adding the columns
         of current root_node_pseudotime and removing the previous ones.
-    clustering: `pandas.core.series.Series` (`adata.obs['clustering']`,dtype `str`)
+    clustering: `pandas.core.series.Series`
+        (`adata.obs['clustering']`,dtype `str`)
         Array of dim (number of samples) that stores
         the clustering labels ('0', '1', …) for each cell.
     epg : `networkx.classes.graph.Graph` (`adata.uns['epg']`)
@@ -527,81 +531,7 @@ def _seed_graph(
     verbose=True,
 ):
 
-    """Seeding the initial graph.
-
-    Parameters
-    ----------
-    adata: AnnData
-        Annotated data matrix.
-    obsm: `str`, optional (default: 'X_dr')
-        The multi-dimensional annotation of observations used to learn the graph
-    layer: `str`, optional (default: None)
-        The layer used to learn the graph
-    init_nodes_pos: `array`, shape = [n_nodes,n_dimension], optional (default: `None`)
-        initial node positions
-    init_edges: `array`, shape = [n_edges,2], optional (default: `None`)
-        initial edges, all the initial nodes should be included in the tree structure
-    clustering: `str`, optional (default: 'kmeans')
-        Choose from {{'ap','kmeans','sc'}}
-        clustering method used to infer the initial nodes.
-        'ap' affinity propagation
-        'kmeans' K-Means clustering
-        'sc' spectral clustering
-    damping: `float`, optional (default: 0.75)
-        Damping factor (between 0.5 and 1) for affinity propagation.
-    pref_perc: `int`, optional (default: 50)
-        Preference percentile (between 0 and 100).
-        The percentile of the input similarities for affinity propagation.
-    n_clusters: `int`, optional (default: 10)
-        Number of clusters (only valid once 'clustering' is specificed as 'sc' or 'kmeans').
-    max_n_clusters: `int`, optional (default: 200)
-        The allowed maximum number of clusters for 'ap'.
-    n_neighbors: `int`, optional (default: 50)
-        The number of neighbor cells used for spectral clustering.
-    nb_pct: `float`, optional (default: None)
-        The percentage of neighbor cells (when sepcified, it will overwrite n_neighbors).
-    use_vis: `bool`, optional (default: False)
-        If True, the manifold learnt from st.plot_visualization_2D()
-        will replace the manifold learnt from st.dimension_reduction().
-        The principal graph will be learnt in the new manifold.
-    paths: list of lists, optional (default: [])
-        Paths between categorical labels used
-        for supervised MST initialization
-    paths_forbidden: list of lists, optional (default: [])
-        Forbidden paths between categorical labels
-        used for supervised MST initialization
-    labels: `str`, optional (default: None)
-        Categorical labels for supervised MST initialization
-
-    Returns
-    -------
-    updates `adata` with the following fields.
-    adata.obs: `pandas.core.frame.DataFrame` (`adata.obs`)
-        Update adata.obs with adding the columns
-        of current root_node_pseudotime and removing the previous ones.
-    clustering: `pandas.core.series.Series` (`adata.obs['clustering']`,dtype `str`)
-        Array of dim (number of samples)
-        that stores the clustering labels ('0', '1', …) for each cell.
-    epg : `networkx.classes.graph.Graph` (`adata.uns['epg']`)
-        Elastic principal graph structure.
-        It contains node attributes ('pos')
-    flat_tree : `networkx.classes.graph.Graph` (`adata.uns['flat_tree']`)
-        An abstract of elastic principle graph structure
-        by only keeping leaf nodes and branching nodes.
-        It contains node attribtutes ('pos','label')
-        and edge attributes ('nodes','id','len','color').
-    seed_epg : `networkx.classes.graph.Graph` (`adata.uns['epg']`)
-        Store seeded elastic principal graph structure
-    seed_flat_tree : `networkx.classes.graph.Graph` (`adata.uns['flat_tree']`)
-        Store seeded flat_tree
-    Notes
-    -------
-    The default procedure is fast and good enough
-    when seeding structure in low-dimensional space.
-    when seeding structure in high-dimensional space,
-    it's strongly recommended to use 'infer_initial_structure'
-    to get the initial node positions and edges
-    """
+    """Internal method to seed_graph"""
 
     if verbose:
         print("Seeding initial graph...")
@@ -954,7 +884,8 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
     num_modes = np.array([num_labels[m] for m in modes])
 
-    # add centroids if necessary to prevent bug (if some label has no kmean assigned to it)
+    # add centroids if necessary to prevent bug
+    # (if some label has no kmean assigned to it)
     labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(
@@ -1030,8 +961,8 @@ def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
 def _categorical_adjmat2(
     mat, init_nodes_pos, paths, paths_forbidden, labels, factor
 ):
-    """Main function, create categorical adjmat given node positions, cluster
-    paths, point labels."""
+    """Main function, create categorical adjmat given
+    node positions, cluster paths, point labels."""
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
@@ -1056,7 +987,8 @@ def _categorical_adjmat2(
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
     num_modes = np.array([num_labels[m] for m in modes])
 
-    # add centroids if necessary to prevent bug (if some label has no kmean assigned to it)
+    # add centroids if necessary to prevent bug
+    # (if some label has no kmean assigned to it)
     labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(

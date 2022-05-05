@@ -349,7 +349,8 @@ def detect_transition_markers(
                 df_stat_pval_qval["stat"], len(pseudotime_cells_sort)
             )
         elif method == "xi":
-            ### /!\ dont use df_cells_sort and pseudotime_cells_sort, breaks xicorr
+            # /!\ dont use df_cells_sort
+            # and pseudotime_cells_sort, breaks xicorr
             res = _xicorr_loop_parallel(
                 np.array(df_cells.iloc[:, ix_cutoff]),
                 np.array(pseudotime_cells),
