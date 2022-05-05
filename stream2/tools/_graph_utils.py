@@ -110,7 +110,8 @@ def add_loops(
             [len(nodep) for nodep in merged_nodep],
         ).astype(str)
         adata.uns[key]["edge_partition"] = np.repeat(
-            adata.obs["partition"].unique(), [len(edges) for edges in merged_edges]
+            adata.obs["partition"].unique(),
+            [len(edges) for edges in merged_edges],
         ).astype(str)
         adata.uns[key]["params"] = p_adata.uns[key]["params"]
 
@@ -234,7 +235,10 @@ def _add_loops(
 def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
 
     X = _get_graph_data(adata, key)
-    init_nodes_pos, init_edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
+    init_nodes_pos, init_edges = (
+        adata.uns["epg"]["node_pos"],
+        adata.uns["epg"]["edge"],
+    )
 
     # --- Init parameters, variables
     Mu = adata.uns[key]["params"]["epg_mu"]
@@ -282,8 +286,20 @@ def add_path(adata, source, target, n_nodes=None, use_weights=False, key="epg"):
     ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
         _merged_edges, Lambdas=Lambda, Mus=Mus
     )
-    _merged_nodep, _, _, _, _, _, _ = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
-        X, _merged_nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
+    (
+        _merged_nodep,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+        X,
+        _merged_nodep,
+        ElasticMatrix,
+        PointWeights=weights,
+        FixNodesAtPoints=[],
     )
 
     # check intersection
@@ -366,7 +382,7 @@ def del_path(
     ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
         edges, Lambdas=Lambda, Mus=Mus
     )
-    newnodep, _, _, _, _, _, _ = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+    (newnodep, _, _, _, _, _, _,) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
         X, nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
     )
 
