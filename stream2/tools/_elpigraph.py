@@ -656,12 +656,12 @@ def _seed_graph(
             label_strength,
         )
         D = pairwise_distances(init_nodes_pos)
-        G = nx.from_numpy_matrix(D * clus_adjmat)
+        G = nx.from_numpy_array(D * clus_adjmat)
 
     # ---else unsupervised
     else:
         D = pairwise_distances(init_nodes_pos)
-        G = nx.from_numpy_matrix(D)
+        G = nx.from_numpy_array(D)
 
     # ---get edges from mst
     mst = nx.minimum_spanning_tree(G, ignore_nan=True)
@@ -796,7 +796,7 @@ def _force_missing_connections(
                     found_missing = True
 
         # ---get edges from mst
-        G = nx.from_numpy_matrix(D * clus_adjmat)
+        G = nx.from_numpy_array(D * clus_adjmat)
         mst = nx.minimum_spanning_tree(G, ignore_nan=True)
         init_edges = np.array(mst.edges())
     return init_edges
@@ -973,7 +973,7 @@ def _categorical_adjmat2(
 
     ix_nan = np.isnan(adjmat)
     adjmat[ix_nan] = 0.0
-    graph = nx.from_numpy_matrix(adjmat)
+    graph = nx.from_numpy_array(adjmat)
     adjmat_strength = np.array(
         pd.DataFrame(dict(nx.all_pairs_shortest_path_length(graph)))
     )
