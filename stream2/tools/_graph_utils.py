@@ -31,9 +31,9 @@ def add_loops(
     use_partition=False,
     key="epg",
 ):
-    """
-    This function tries to add extra paths to the graph
-    by computing a series of principal curves connecting two nodes and retaining plausible ones using heuristic parameters
+    """This function tries to add extra paths to the graph by computing a
+    series of principal curves connecting two nodes and retaining plausible
+    ones using heuristic parameters.
 
     min_path_len: int, default=None
         Minimum distance along the graph (in number of nodes) that separates the two nodes to connect with a principal curve
@@ -459,8 +459,7 @@ def prune_graph(
 def find_disconnected_components(
     adata, groups="leiden", neighbors_key=None, verbose=True
 ):
-    """
-    Find if data contains disconnected components
+    """Find if data contains disconnected components.
 
     Inputs
     ------

@@ -1,4 +1,4 @@
-"""Functions to calculate principal graph"""
+"""Functions to calculate principal graph."""
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ def learn_graph(
     ordinal_root_point=None,
     **kwargs,
 ):
-    """Learn principal graph
+    """Learn principal graph.
 
     Parameters
     ----------
@@ -162,7 +162,7 @@ def _learn_graph(
     n_jobs=None,
     **kwargs,
 ):
-    """Learn principal graph
+    """Learn principal graph.
 
     Parameters
     ----------
@@ -730,7 +730,7 @@ def _seed_graph(
 
 
 def _store_graph_attributes(adata, mat, key):
-    """ Compute graph attributes and store them in adata.uns[key] """
+    """Compute graph attributes and store them in adata.uns[key]"""
 
     G = nx.Graph()
     G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
@@ -765,7 +765,7 @@ def _store_graph_attributes(adata, mat, key):
 
 
 def _get_branch_id(adata, key="epg"):
-    """ add adata.obs['branch_id'] """
+    """add adata.obs['branch_id']"""
     # get branches
     net = elpigraph.src.graphs.ConstructGraph(
         {"Edges": [adata.uns[key]["edge"]]}
@@ -843,7 +843,7 @@ def _force_missing_connections(
 
 
 def _get_partition_modes(mat, init_nodes_pos, labels):
-    """ Return most frequent label assigned to each node """
+    """Return most frequent label assigned to each node."""
     labels = np.array(labels)
     part = elpigraph.src.core.PartitionData(
         mat, init_nodes_pos, 10 ** 6, np.sum(mat ** 2, axis=1, keepdims=1)
@@ -856,7 +856,10 @@ def _get_partition_modes(mat, init_nodes_pos, labels):
 
 
 def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
-    """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
+    """Create adjmat given labels and paths.
+
+    labels_ignored are connected to all other labels
+    """
     num_labels = {
         s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
     }
@@ -893,7 +896,7 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
 
 
 def _get_clus_adjmat(adjmat, num_modes, n_clusters):
-    """ Create clus_adjmat given labels adjmat and kmeans label assignment."""
+    """Create clus_adjmat given labels adjmat and kmeans label assignment."""
 
     adjmat_clus = np.full((n_clusters, n_clusters), np.nan)
     eis, ejs = adjmat.nonzero()
@@ -908,7 +911,8 @@ def _get_clus_adjmat(adjmat, num_modes, n_clusters):
 
 
 def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
-    """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
+    """Main function, create categorical adjmat given node positions, cluster
+    paths, point labels."""
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
@@ -942,7 +946,10 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
 
 
 def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
-    """ Create adjmat given labels and paths. labels_ignored are connected to all other labels """
+    """Create adjmat given labels and paths.
+
+    labels_ignored are connected to all other labels
+    """
     num_labels = {
         s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
     }
@@ -975,7 +982,7 @@ def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
 
 
 def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
-    """ Create clus_adjmat given labels adjmat and kmeans label assignment."""
+    """Create clus_adjmat given labels adjmat and kmeans label assignment."""
 
     adjmat_clus = np.ones((n_clusters, n_clusters))
 
@@ -993,7 +1000,8 @@ def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
 def _categorical_adjmat2(
     mat, init_nodes_pos, paths, paths_forbidden, labels, factor
 ):
-    """ Main function, create categorical adjmat given node positions, cluster paths, point labels"""
+    """Main function, create categorical adjmat given node positions, cluster
+    paths, point labels."""
 
     labels_u = np.unique([c for p in paths for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
@@ -1051,7 +1059,7 @@ def _categorical_adjmat2(
 
 
 def _get_graph_data(adata, key):
-    """get data matrix used to learn the graph"""
+    """get data matrix used to learn the graph."""
     obsm = adata.uns[key]["params"]["obsm"]
     layer = adata.uns[key]["params"]["layer"]
 

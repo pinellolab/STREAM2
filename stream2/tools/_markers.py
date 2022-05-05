@@ -12,9 +12,7 @@ from . import infer_pseudotime
 
 @nb.njit
 def nb_unique1d(ar):
-    """
-    Numba speedup
-    """
+    """Numba speedup."""
     ar = ar.flatten()
     perm = ar.argsort(kind="mergesort")
     aux = ar[perm]
@@ -45,8 +43,7 @@ def nb_unique1d(ar):
 
 @nb.njit
 def _xicorr(X, Y):
-    """xi correlation coefficient
-    X,Y 0 dimensional np.arrays"""
+    """xi correlation coefficient X,Y 0 dimensional np.arrays."""
     n = X.size
     xi = np.argsort(X, kind="quicksort")
     Y = Y[xi]
@@ -67,7 +64,7 @@ def normal_cdf(x):
 
 @nb.njit
 def avg_ties(X):
-    """ Same as scipy.stats.rankdata method="average" """
+    """Same as scipy.stats.rankdata method="average"."""
     xi = np.argsort(X)
     xi_rank = np.argsort(xi)
     unique, _, inverse, c_ = nb_unique1d(X)
@@ -84,7 +81,7 @@ def avg_ties(X):
 
 @nb.njit
 def _xicorr_inner(x, y, n):
-    """ Translated from R https://github.com/cran/XICOR/ """
+    """Translated from R https://github.com/cran/XICOR/"""
     # ---corr
     PI = avg_ties(x)
     fr = avg_ties(y) / n
@@ -115,8 +112,8 @@ def _xicorr_inner(x, y, n):
 
 @nb.njit(parallel=True)
 def _xicorr_loop_parallel(X, y):
-    """Numba fast parallel xi correlation coefficient
-    X,Y 0 dimensional np.arrays"""
+    """Numba fast parallel xi correlation coefficient X,Y 0 dimensional
+    np.arrays."""
     n = len(X)
     corrs = np.zeros(X.shape[1])
     pvals = np.zeros(X.shape[1])
@@ -126,18 +123,14 @@ def _xicorr_loop_parallel(X, y):
 
 
 def nb_spearman(x, Y):
-    """
-    Fast equivalent to
-    for i in range(y.shape[1]): spearmanr(x,y[:,i]).correlation
-    """
+    """Fast equivalent to for i in range(y.shape[1]):
+    spearmanr(x,y[:,i]).correlation."""
     return pearson_corr(_rankdata(x[None]), _rankdata(Y.T))
 
 
 def pearson_corr(arr1, arr2):
-    """
-    Pearson correlation
-    along the last dimension of two multidimensional arrays.
-    """
+    """Pearson correlation along the last dimension of two multidimensional
+    arrays."""
     mean1 = np.mean(arr1, axis=-1, keepdims=1)
     mean2 = np.mean(arr2, axis=-1, keepdims=1)
     dev1, dev2 = arr1 - mean1, arr2 - mean2
@@ -154,7 +147,7 @@ def pearson_corr(arr1, arr2):
 
 @nb.njit(parallel=True, fastmath=True)
 def _rankdata(X):
-    """reimplementing scipy.stats.rankdata faster"""
+    """reimplementing scipy.stats.rankdata faster."""
     tmp = np.zeros_like(X)
     for i in nb.prange(X.shape[0]):
         tmp[i] = _rankdata_inner(X[i])
@@ -163,7 +156,7 @@ def _rankdata(X):
 
 @nb.njit
 def _rankdata_inner(x):
-    """inner loop for _rankdata"""
+    """inner loop for _rankdata."""
     sorter = np.argsort(x)
 
     inv = np.empty(sorter.size, dtype=np.intp)

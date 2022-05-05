@@ -1,4 +1,4 @@
-"""Configuration for STREAM2"""
+"""Configuration for STREAM2."""
 
 import os
 import seaborn as sns
@@ -6,7 +6,7 @@ import matplotlib as mpl
 
 
 class Stream2Config:
-    """configuration class for STREAM2"""
+    """configuration class for STREAM2."""
 
     def __init__(self, workdir="./result_stream2", save_fig=False, n_jobs=1):
         self.workdir = workdir

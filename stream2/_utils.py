@@ -1,4 +1,4 @@
-"""Utility functions and classes"""
+"""Utility functions and classes."""
 
 from kneed import KneeLocator
 import networkx as nx
