@@ -94,7 +94,7 @@ def add_loops(
                     use_weights=use_weights,
                     plot=plot,
                     verbose=verbose,
-                    copy=copy,
+                    inplace=inplace,
                     key=key,
                 )
 
