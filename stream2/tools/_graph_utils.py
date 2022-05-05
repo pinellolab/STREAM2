@@ -173,7 +173,8 @@ def _add_loops(
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
-                "adata.obs['pointweights'] not found. Please run st2.tl.get_weights"
+                "adata.obs['pointweights'] not found. Please run"
+                " st2.tl.get_weights"
             )
         weights = np.array(adata.obs["pointweights"]).reshape((-1, 1))
     else:

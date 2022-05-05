@@ -229,8 +229,8 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
 def detect_transition_markers(
     adata,
-    source=None,
-    target=None,
+    source,
+    target,
     nodes_to_include=None,
     percentile_expr=95,
     min_num_cells=5,

@@ -201,11 +201,13 @@ def _learn_graph(
     if use_seed:
         if "seed_epg" not in adata.uns:
             raise ValueError(
-                f"could not find 'seed_epg' in `adata.uns. Please run st.tl.seed_graph"
+                f"could not find 'seed_epg' in `adata.uns. Please run"
+                f" st.tl.seed_graph"
             )
         if n_nodes <= len(adata.uns["seed_epg"]["node_pos"]):
             raise ValueError(
-                f"The seed graph already has at least {n_nodes} nodes. Please run st.tl.learn_graph with higher n_nodes"
+                f"The seed graph already has at least {n_nodes} nodes. Please"
+                " run st.tl.learn_graph with higher n_nodes"
             )
         kwargs["InitNodePositions"] = adata.uns["seed_epg"]["node_pos"]
         kwargs["InitEdges"] = adata.uns["seed_epg"]["edge"]
@@ -246,7 +248,8 @@ def _learn_graph(
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
-                "adata.obs['pointweights'] not found. Please run st2.tl.get_weights"
+                "adata.obs['pointweights'] not found. Please run"
+                " st2.tl.get_weights"
             )
         weights = np.array(adata.obs["pointweights"]).reshape((-1, 1))
     else:
@@ -614,7 +617,8 @@ def _seed_graph(
                 )
             if verbose:
                 print(
-                    "Too many clusters are generated, please lower pref_perc or increase damping and retry it"
+                    "Too many clusters are generated, please lower pref_perc"
+                    " or increase damping and retry it"
                 )
             return
         cluster_labels = ap.labels_
@@ -642,7 +646,8 @@ def _seed_graph(
         if use_weights:
             if "pointweights" not in adata.obs:
                 raise ValueError(
-                    "adata.obs['pointweights'] not found. Please run st2.tl.get_weights"
+                    "adata.obs['pointweights'] not found. Please run"
+                    " st2.tl.get_weights"
                 )
         else:
             weights = None
@@ -668,7 +673,8 @@ def _seed_graph(
         and label is not None
     ):
         raise ValueError(
-            "Both a label key (label: str) and cluster paths (paths: list of list) need to be provided for path-supervised initialization"
+            "Both a label key (label: str) and cluster paths (paths: list of"
+            " list) need to be provided for path-supervised initialization"
         )
     elif (
         (len(paths) > 0) or (len(paths_forbidden) > 0)
@@ -918,7 +924,8 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
     labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(
-            f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
+            f"Found label(s) {labels_miss} with no representative node. Adding"
+            " label centroid(s) as node(s)"
         )
         centroids = np.vstack(
             [mat[labels == s].mean(axis=0) for s in labels_miss]
@@ -1015,7 +1022,8 @@ def _categorical_adjmat2(
     labels_miss = np.setdiff1d(labels_u, modes)
     if len(labels_miss) > 0:
         print(
-            f"Found label(s) {labels_miss} with no representative node. Adding label centroid(s) as node(s)"
+            f"Found label(s) {labels_miss} with no representative node. Adding"
+            " label centroid(s) as node(s)"
         )
         centroids = np.vstack(
             [mat[labels == s].mean(axis=0) for s in labels_miss]
