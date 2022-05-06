@@ -188,9 +188,9 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
 def detect_transition_markers(
     adata,
-    source=None,
-    target=None,
-    nodes_to_include=None,
+    source_path=None,
+    target_path=None,
+    nodes_to_include_path=None,
     percentile_expr=95,
     n_jobs=1,
     min_num_cells=5,
@@ -203,8 +203,14 @@ def detect_transition_markers(
         os.makedirs(file_path)
 
     # Extract cells by provided nodes
+    if source_path is None & target_path is None:
+        source_path = adata.uns['epg_pseudotime_params']['source']
+        target_path = adata.uns['epg_pseudotime_params']['target']
+        nodes_to_include_path = \
+            adata.uns['epg_pseudotime_params']['nodes_to_include']
+
     cells, path_alias = _utils.get_path(
-        adata, source, target, nodes_to_include, key
+        adata, source_path, target_path, nodes_to_include_path, key
     )
 
     # Scale matrix with expressed markers
@@ -236,6 +242,15 @@ def detect_transition_markers(
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
+
+    # print warning when pseudotime has NAs
+    if np.sum(np.isnan(pseudotime_cells)) > 0:
+        print(
+            "Pseudotime contains NA value, Please make sure infer_pseudotime()"
+            "covers all cells for detect_transition_markers()"
+        )
+        exit()
+
     df_cells_sort = df_cells.iloc[np.argsort(pseudotime_cells)]
     pseudotime_cells_sort = pseudotime_cells[np.argsort(pseudotime_cells)]
 
@@ -281,9 +296,9 @@ def detect_transition_markers(
     if sum(ix_cutoff) == 0:
         print(
             "No Transition markers are detected in branch with nodes "
-            + str(source)
+            + str(source_path)
             + " to "
-            + str(target)
+            + str(target_path)
         )
 
     else:
@@ -326,9 +341,9 @@ def detect_transition_markers(
             os.path.join(
                 file_path,
                 "transition_markers_path_"
-                + str(source)
+                + str(source_path)
                 + "-"
-                + str(target)
+                + str(target_path)
                 + ".tsv",
             ),
             sep="\t",
