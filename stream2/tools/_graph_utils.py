@@ -335,7 +335,7 @@ def add_path(
             (
                 _merged_nodep,
                 _merged_edges,
-            ) = elpigraph.src._graph_editing.remove_intersections(
+            ) = elpigraph._graph_editing.remove_intersections(
                 _merged_nodep, _merged_edges
             )
 
