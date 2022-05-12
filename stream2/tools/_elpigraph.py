@@ -202,7 +202,7 @@ def _learn_graph(
         "['principal_curve','principal_tree','principal_circle']"
     )
 
-    if use_seed:
+    if use_seed and (method == "principal_tree"):
         if "seed_epg" not in adata.uns:
             raise ValueError(
                 f"could not find 'seed_epg' in `adata.uns. Please run"
@@ -223,6 +223,13 @@ def _learn_graph(
             print("Learning the graph on adata.X")
             mat = adata.X
     else:
+        if (
+            use_seed
+            and (method != "principal_tree")
+            and ("seed_epg" in adata.uns)
+        ):
+            print(f"WARNING: seed graph is ignored when using method {method}")
+
         kwargs["InitNodePositions"] = None
         kwargs["InitEdges"] = None
         if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
@@ -301,6 +308,7 @@ def _learn_graph(
             Mu=epg_mu,
             alpha=epg_alpha,
             PointWeights=weights,
+            InitNodes=3,
             **kwargs,
         )[0]
 

@@ -241,7 +241,13 @@ def _add_loops(
 
 
 def add_path(
-    adata, source, target, n_nodes=None, use_weights=False, key="epg"
+    adata,
+    source,
+    target,
+    n_nodes=None,
+    use_weights=False,
+    refit_graph=False,
+    key="epg",
 ):
 
     X = _get_graph_data(adata, key)
@@ -257,6 +263,8 @@ def add_path(
         n_nodes = min(16, max(6, len(init_nodes_pos) / 20))
     if use_weights:
         weights = adata.obs["pointweights"]
+    else:
+        weights = None
 
     SquaredX = np.sum(X ** 2, axis=1, keepdims=1)
     part, part_dist = elpigraph.src.core.PartitionData(
@@ -289,30 +297,32 @@ def add_path(
     _edges[edges == 1] = target
     _merged_edges = np.concatenate((init_edges, _edges))
     _merged_nodep = np.concatenate((init_nodes_pos, nodep[2:]))
-    cycle_edges = elpigraph._graph_editing.find_all_cycles(
-        nx.Graph(_merged_edges.tolist())
-    )[0]
 
-    Mus = np.repeat(Mu, len(_merged_nodep))
-    Mus[cycle_edges] = Mu / 10000
-    ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
-        _merged_edges, Lambdas=Lambda, Mus=Mus
-    )
-    (
-        _merged_nodep,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
-        X,
-        _merged_nodep,
-        ElasticMatrix,
-        PointWeights=weights,
-        FixNodesAtPoints=[],
-    )
+    if refit_graph:
+        cycle_edges = elpigraph._graph_editing.find_all_cycles(
+            nx.Graph(_merged_edges.tolist())
+        )[0]
+
+        Mus = np.repeat(Mu, len(_merged_nodep))
+        Mus[cycle_edges] = Mu / 10000
+        ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
+            _merged_edges, Lambdas=Lambda, Mus=Mus
+        )
+        (
+            _merged_nodep,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+            X,
+            _merged_nodep,
+            ElasticMatrix,
+            PointWeights=weights,
+            FixNodesAtPoints=[],
+        )
 
     # check intersection
     if _merged_nodep.shape[1] == 2:
@@ -337,7 +347,13 @@ def add_path(
 
 
 def del_path(
-    adata, source, target, nodes_to_include=None, use_weights=False, key="epg"
+    adata,
+    source,
+    target,
+    nodes_to_include=None,
+    use_weights=False,
+    refit_graph=False,
+    key="epg",
 ):
 
     X = _get_graph_data(adata, key)
@@ -347,6 +363,8 @@ def del_path(
     Lambda = adata.uns[key]["params"]["epg_lambda"]
     if use_weights:
         weights = adata.obs["pointweights"]
+    else:
+        weights = None
 
     # --- get path to remove
     epg_edge = adata.uns[key]["edge"]
@@ -391,31 +409,32 @@ def del_path(
     ]
 
     # --- get nodep, edges, create new graph with added loop
-    nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
+    if refit_graph:
+        nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
 
-    cycle_edges = elpigraph._graph_editing.find_all_cycles(
-        nx.Graph(edges.tolist())
-    )[0]
+        cycle_edges = elpigraph._graph_editing.find_all_cycles(
+            nx.Graph(edges.tolist())
+        )[0]
 
-    Mus = np.repeat(Mu, len(nodep))
-    Mus[cycle_edges] = Mu / 10000
-    ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
-        edges, Lambdas=Lambda, Mus=Mus
-    )
-    (
-        newnodep,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
-        X, nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
-    )
+        Mus = np.repeat(Mu, len(nodep))
+        Mus[cycle_edges] = Mu / 10000
+        ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
+            edges, Lambdas=Lambda, Mus=Mus
+        )
+        (
+            newnodep,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = elpigraph.src.core.PrimitiveElasticGraphEmbedment(
+            X, nodep, ElasticMatrix, PointWeights=weights, FixNodesAtPoints=[]
+        )
+        adata.uns["epg"]["node_pos"] = newnodep
 
     # update edge_len, conn, data projection
-    adata.uns["epg"]["node_pos"] = newnodep
     _store_graph_attributes(adata, X, key)
 
 
@@ -424,7 +443,7 @@ def prune_graph(
     mode="PointNumber",
     collapse_par=5,
     trimming_radius=np.inf,
-    refit=False,
+    refit_graph=False,
     copy=False,
 ):
     pg = {
@@ -439,7 +458,7 @@ def prune_graph(
         TrimmingRadius=trimming_radius,
     )
     if not copy:
-        if refit:
+        if refit_graph:
             params = adata.uns["epg"]["params"]
             learn_graph(
                 adata,
