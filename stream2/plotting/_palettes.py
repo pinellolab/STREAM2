@@ -1,4 +1,4 @@
-"""Color palettes in addition to matplotlib's palettes
+"""Color palettes in addition to matplotlib's palettes.
 
 This is modifed from
 scanpy palettes https://github.com/theislab/scanpy/blob/master/scanpy/plotting/palettes.py # noqa

@@ -1,4 +1,4 @@
-"""Configuration for STREAM2"""
+"""Configuration for STREAM2."""
 
 import os
 import seaborn as sns
@@ -6,29 +6,28 @@ import matplotlib as mpl
 
 
 class Stream2Config:
-    """configuration class for STREAM2"""
+    """configuration class for STREAM2."""
 
-    def __init__(self,
-                 workdir='./result_stream2',
-                 save_fig=False,
-                 n_jobs=1):
+    def __init__(self, workdir="./result_stream2", save_fig=False, n_jobs=1):
         self.workdir = workdir
         self.save_fig = save_fig
         self.n_jobs = n_jobs
 
-    def set_figure_params(self,
-                          context='notebook',
-                          style='white',
-                          palette='deep',
-                          font='sans-serif',
-                          font_scale=1.1,
-                          color_codes=True,
-                          save_fig=False,
-                          dpi=80,
-                          dpi_save=150,
-                          fig_size=[5.4, 4.8],
-                          rc=None):
-        """ Set global parameters for figures. Modified from sns.set()
+    def set_figure_params(
+        self,
+        context="notebook",
+        style="white",
+        palette="deep",
+        font="sans-serif",
+        font_scale=1.1,
+        color_codes=True,
+        save_fig=False,
+        dpi=80,
+        dpi_save=150,
+        fig_size=[5.4, 4.8],
+        rc=None,
+    ):
+        """Set global parameters for figures. Modified from sns.set()
         Parameters
         ----------
         context : string or dict
@@ -54,23 +53,26 @@ class Stream2Config:
             Please see https://matplotlib.org/tutorials/introductory/customizing.html#a-sample-matplotlibrc-file # noqa
         """
         # mpl.rcParams.update(mpl.rcParamsDefault)
-        sns.set(context=context,
-                style=style,
-                palette=palette,
-                font=font,
-                font_scale=font_scale,
-                color_codes=color_codes,
-                rc={'figure.dpi': dpi,
-                    'savefig.dpi': dpi_save,
-                    'figure.figsize': fig_size,
-                    'image.cmap': 'viridis',
-                    'lines.markersize': 6,
-                    'legend.columnspacing': 0.1,
-                    'legend.borderaxespad': 0.1,
-                    'legend.handletextpad': 0.1,
-                    'pdf.fonttype': 42,
-                    })
-        if(rc is not None):
+        sns.set(
+            context=context,
+            style=style,
+            palette=palette,
+            font=font,
+            font_scale=font_scale,
+            color_codes=color_codes,
+            rc={
+                "figure.dpi": dpi,
+                "savefig.dpi": dpi_save,
+                "figure.figsize": fig_size,
+                "image.cmap": "viridis",
+                "lines.markersize": 6,
+                "legend.columnspacing": 0.1,
+                "legend.borderaxespad": 0.1,
+                "legend.handletextpad": 0.1,
+                "pdf.fonttype": 42,
+            },
+        )
+        if rc is not None:
             assert isinstance(rc, dict), "rc must be dict"
             for key, value in rc.items():
                 if key in mpl.rcParams.keys():
@@ -89,13 +91,13 @@ class Stream2Config:
         Returns
         -------
         """
-        if(workdir is None):
+        if workdir is None:
             workdir = self.workdir
             print("Using default working directory.")
-        if(not os.path.exists(workdir)):
+        if not os.path.exists(workdir):
             os.makedirs(workdir)
         self.workdir = workdir
-        print('Saving results in: %s' % workdir)
+        print("Saving results in: %s" % workdir)
 
 
 settings = Stream2Config()

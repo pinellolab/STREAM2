@@ -1,4 +1,4 @@
-"""Utility functions and classes"""
+"""Utility functions and classes."""
 
 import numpy as np
 from kneed import KneeLocator
@@ -15,7 +15,7 @@ def locate_elbow(
     online=False,
     **kwargs
 ):
-    """Detect knee points
+    """Detect knee points.
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def locate_elbow(
 
 
 def cal_tf_idf(mat):
-    """Transform a count matrix to a tf-idf representation"""
+    """Transform a count matrix to a tf-idf representation."""
     mat = csr_matrix(mat)
     tf = csr_matrix(mat / (mat.sum(axis=0)))
     idf = np.array(np.log(1 + mat.shape[1] / mat.sum(axis=1))).flatten()

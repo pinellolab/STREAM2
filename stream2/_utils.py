@@ -1,4 +1,4 @@
-"""Utility functions and classes"""
+"""Utility functions and classes."""
 
 from kneed import KneeLocator
 import networkx as nx
@@ -18,7 +18,6 @@ def locate_elbow(
     **kwargs,
 ):
     """Detect knee points
-
     Parameters
     ----------
     x : `array-like`
@@ -40,7 +39,6 @@ def locate_elbow(
         kneed will return first knee if False.
     **kwargs: `dict`, optional
         Extra arguments to KneeLocator.
-
     Returns
     -------
     elbow: `int`

@@ -1,4 +1,4 @@
-"""General preprocessing functions"""
+"""General preprocessing functions."""
 
 import numpy as np
 from sklearn.utils import sparsefuncs

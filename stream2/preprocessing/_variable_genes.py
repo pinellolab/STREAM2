@@ -1,4 +1,4 @@
-"""Preprocess"""
+"""Preprocess."""
 
 import numpy as np
 from scipy.sparse import (
@@ -25,7 +25,6 @@ def select_variable_genes(
 
     Returns
     -------
-
     """
 
     if layer is None:

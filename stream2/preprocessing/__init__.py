@@ -1,4 +1,4 @@
-"""Preprocessing"""
+"""Preprocessing."""
 
 from ._general import (
     log_transform,
