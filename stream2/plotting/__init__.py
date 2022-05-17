@@ -1,4 +1,4 @@
-"""Plotting"""
+"""Plotting."""
 
 from ._plot import (
     pca_variance_ratio,

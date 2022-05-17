@@ -1,4 +1,4 @@
-"""plotting functions"""
+"""plotting functions."""
 
 import os
 import numpy as np
@@ -41,7 +41,7 @@ def violin(
     fig_name="plot_violin.pdf",
     **kwargs,
 ):
-    """Violin plot"""
+    """Violin plot."""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -158,7 +158,7 @@ def hist(
     fig_name="plot_violin.pdf",
     **kwargs,
 ):
-    """histogram plot"""
+    """histogram plot."""
 
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
@@ -457,7 +457,7 @@ def _scatterplot2d(
     copy=False,
     **kwargs,
 ):
-    """2d scatter plot
+    """2d scatter plot.
 
     Parameters
     ----------
@@ -666,7 +666,7 @@ def _scatterplot2d_plotly(
     fig_path=None,
     **kwargs,
 ):
-    """interactive 2d scatter plot by Plotly
+    """interactive 2d scatter plot by Plotly.
 
     Parameters
     ----------
@@ -814,7 +814,7 @@ def umap(
     plotly=False,
     **kwargs,
 ):
-    """Plot coordinates in UMAP
+    """Plot coordinates in UMAP.
 
     Parameters
     ----------
@@ -1028,7 +1028,7 @@ def graph(
     key="epg",
     **kwargs,
 ):
-    """Plot principal graph
+    """Plot principal graph.
 
     Parameters
     ----------

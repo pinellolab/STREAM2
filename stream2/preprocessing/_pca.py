@@ -1,4 +1,4 @@
-"""Principal component analysis"""
+"""Principal component analysis."""
 
 import numpy as np
 from sklearn.decomposition import TruncatedSVD
@@ -85,7 +85,7 @@ def select_pcs(
     min_elbow=None,
     **kwargs,
 ):
-    """select top PCs based on variance_ratio"""
+    """select top PCs based on variance_ratio."""
     if n_pcs is None:
         n_components = adata.obsm["X_pca"].shape[1]
         if min_elbow is None:
@@ -114,7 +114,7 @@ def select_pcs_features(
     min_elbow=None,
     **kwargs,
 ):
-    """select features that contribute to the top PCs
+    """select features that contribute to the top PCs.
 
     S : `float`, optional (default: 10)
         Sensitivity
@@ -131,7 +131,6 @@ def select_pcs_features(
         kneed will return first knee if False.
     **kwargs: `dict`, optional
         Extra arguments to KneeLocator.
-
     """
     n_pcs = adata.uns["pca"]["n_pcs"]
     n_features = adata.uns["pca"]["PCs"].shape[0]

@@ -1,4 +1,4 @@
-"""STREAM2"""
+"""STREAM2."""
 
 from ._settings import settings
 from . import preprocessing as pp

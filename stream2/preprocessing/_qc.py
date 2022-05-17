@@ -1,4 +1,4 @@
-"""Quality Control"""
+"""Quality Control."""
 
 import numpy as np
 from scipy.sparse import (

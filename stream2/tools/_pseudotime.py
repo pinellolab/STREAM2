@@ -1,4 +1,4 @@
-"""Pseudotime inference"""
+"""Pseudotime inference."""
 
 import numpy as np
 import networkx as nx
@@ -54,11 +54,29 @@ def infer_pseudotime(
         for x in G.nodes
     }
 
-    dict_dist_to_source = nx.shortest_path_length(
-        G_sp, source=source, weight="len"
-    )
+    if target is None:
+        dict_dist_to_source = nx.shortest_path_length(
+            G_sp, source=source, weight="len"
+        )
+    else:
+        dict_dist_to_source = dict(
+            zip(
+                nodes_sp,
+                np.cumsum(
+                    np.array(
+                        [0.0]
+                        + [
+                            G.get_edge_data(nodes_sp[i], nodes_sp[i + 1])[
+                                "len"
+                            ]
+                            for i in range(len(nodes_sp) - 1)
+                        ]
+                    )
+                ),
+            )
+        )
 
-    cells = adata.obs_names[np.isin(adata.obs[f"{key}_node_id"], nodes_sp)]
+    cells = np.isin(adata.obs[f"{key}_node_id"], nodes_sp)
     id_edges_cell = adata.obs.loc[cells, f"{key}_edge_id"].tolist()
     edges_cell = adata.uns[key]["edge"][id_edges_cell, :]
     len_edges_cell = adata.uns[key]["edge_len"][id_edges_cell]

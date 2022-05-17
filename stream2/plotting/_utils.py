@@ -1,4 +1,4 @@
-"""Utility functions and classes"""
+"""Utility functions and classes."""
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ from ._palettes import default_20, default_28, default_102
 
 
 def get_colors(arr, vmin=None, vmax=None, clip=False):
-    """Generate a list of colors for a given array"""
+    """Generate a list of colors for a given array."""
 
     if not isinstance(arr, (pd.Series, np.ndarray)):
         raise TypeError("`arr` must be pd.Series or np.ndarray")
@@ -61,7 +61,7 @@ def get_colors(arr, vmin=None, vmax=None, clip=False):
 
 
 def generate_palette(arr):
-    """Generate a color palette for a given array"""
+    """Generate a color palette for a given array."""
 
     if not isinstance(arr, (pd.Series, np.ndarray)):
         raise TypeError("`arr` must be pd.Series or np.ndarray")
