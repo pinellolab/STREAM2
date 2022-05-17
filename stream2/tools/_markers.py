@@ -7,7 +7,7 @@ import os
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
-from . import infer_pseudotime
+from .. import _utils
 
 
 @nb.njit
@@ -325,9 +325,9 @@ def detect_transition_markers(
     if sum(ix_cutoff) == 0:
         print(
             "No Transition markers are detected in branch with nodes "
-            + str(source)
+            + str(path_source)
             + " to "
-            + str(target)
+            + str(path_target)
         )
 
     else:
@@ -381,9 +381,9 @@ def detect_transition_markers(
             os.path.join(
                 file_path,
                 "transition_markers_path_"
-                + str(source)
+                + str(path_source)
                 + "-"
-                + str(target)
+                + str(path_target)
                 + ".tsv",
             ),
             sep="\t",
