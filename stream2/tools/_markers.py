@@ -7,7 +7,7 @@ import os
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
-from . import infer_pseudotime
+from .. import _utils
 
 
 @nb.njit
@@ -222,9 +222,9 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
 def detect_transition_markers(
     adata,
-    source,
-    target,
-    nodes_to_include=None,
+    path_target,
+    path_source=None,
+    nodes_to_include_path=None,
     percentile_expr=95,
     min_num_cells=5,
     fc_cutoff=1,
@@ -237,15 +237,12 @@ def detect_transition_markers(
         os.makedirs(file_path)
 
     # Extract cells by provided nodes
-    infer_pseudotime(
-        adata,
-        source=source,
-        target=target,
-        nodes_to_include=nodes_to_include,
-        key=key,
+    if path_source is None:
+        path_source = adata.uns['epg_pseudotime_params']['source']
+    
+    cells, path_alias = _utils.get_path(
+        adata, path_source, path_target, nodes_to_include_path, key
     )
-    cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
-    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
 
     # Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
@@ -274,6 +271,15 @@ def detect_transition_markers(
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
+    
+    # print warning when pseudotime has NAs
+    if np.isnan(pseudotime_cells).any:
+        print(
+            "Pseudotime contains NA value, Please make sure infer_pseudotime()"
+            "covers all cells for detect_transition_markers()"
+        )
+        exit()
+    
     df_cells_sort = df_cells.iloc[np.argsort(pseudotime_cells)]
     pseudotime_cells_sort = pseudotime_cells[np.argsort(pseudotime_cells)]
 
@@ -319,9 +325,9 @@ def detect_transition_markers(
     if sum(ix_cutoff) == 0:
         print(
             "No Transition markers are detected in branch with nodes "
-            + str(source)
+            + str(path_source)
             + " to "
-            + str(target)
+            + str(path_target)
         )
 
     else:
@@ -375,9 +381,9 @@ def detect_transition_markers(
             os.path.join(
                 file_path,
                 "transition_markers_path_"
-                + str(source)
+                + str(path_source)
                 + "-"
-                + str(target)
+                + str(path_target)
                 + ".tsv",
             ),
             sep="\t",
