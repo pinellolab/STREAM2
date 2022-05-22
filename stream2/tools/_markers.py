@@ -222,9 +222,6 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
 def detect_transition_markers(
     adata,
-    path_target,
-    path_source=None,
-    nodes_to_include_path=None,
     percentile_expr=95,
     min_num_cells=5,
     fc_cutoff=1,
@@ -236,9 +233,19 @@ def detect_transition_markers(
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    # Extract cells by provided nodes
-    if path_source is None:
-        path_source = adata.uns['epg_pseudotime_params']['source']
+    # Extract cells by parameters in previous infer_pseudotime() step
+    path_source = adata.uns[f"{key}_pseudotime_params"]["source"]
+    path_target = adata.uns[f"{key}_pseudotime_params"]["target"]
+    nodes_to_include_path = adata.uns[f"{key}_pseudotime_params"][
+            "nodes_to_include"
+        ]
+
+    if path_target is None:
+        print(
+            "Please re-run infer_pseudotime() and specify value for "
+            "parameter target"
+        )
+        exit()
     
     cells, path_alias = _utils.get_path(
         adata, path_source, path_target, nodes_to_include_path, key
@@ -271,15 +278,6 @@ def detect_transition_markers(
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
-    
-    # print warning when pseudotime has NAs
-    if np.isnan(pseudotime_cells).any:
-        print(
-            "Pseudotime contains NA value, Please make sure infer_pseudotime()"
-            "covers all cells for detect_transition_markers()"
-        )
-        exit()
-    
     df_cells_sort = df_cells.iloc[np.argsort(pseudotime_cells)]
     pseudotime_cells_sort = pseudotime_cells[np.argsort(pseudotime_cells)]
 
