@@ -13,7 +13,7 @@ from ._elpigraph import (
 )
 
 
-def add_loops(
+def find_paths(
     adata,
     min_path_len=None,
     n_nodes=None,
@@ -85,7 +85,7 @@ def add_loops(
 
             p_adata = _subset_adata(adata, part)
             if part in partitions:
-                _add_loops(
+                _find_paths(
                     p_adata,
                     min_path_len=min_path_len,
                     n_nodes=n_nodes,
@@ -129,7 +129,7 @@ def add_loops(
         if verbose:
             print("Searching potential loops...")
 
-        _add_loops(
+        _find_paths(
             adata,
             min_path_len=min_path_len,
             n_nodes=n_nodes,
@@ -150,7 +150,7 @@ def add_loops(
         )
 
 
-def _add_loops(
+def _find_paths(
     adata,
     min_path_len=None,
     n_nodes=None,
@@ -165,7 +165,7 @@ def _add_loops(
     Mu=0.1,
     use_weights=False,
     plot=False,
-    verbose=False,
+    verbose=True,
     inplace=False,
     key="epg",
 ):
@@ -185,19 +185,14 @@ def _add_loops(
     else:
         weights = None
 
-    (
-        new_edges,
-        new_nodep,
-        new_leaves,
-        new_part,
-        new_energy,
-        new_inner_fraction,
-        merged_nodep,
-        merged_edges,
-    ) = elpigraph.addLoops(
+    PG = elpigraph.findPaths(
         X,
-        init_nodes_pos,
-        init_edges,
+        dict(
+            NodePositions=init_nodes_pos,
+            Edges=[init_edges],
+            Lambda=Lambda,
+            Mu=Mu,
+        ),
         min_path_len=min_path_len,
         nnodes=n_nodes,
         max_inner_fraction=max_inner_fraction,
@@ -208,36 +203,19 @@ def _add_loops(
         radius=radius,
         allow_same_branch=allow_same_branch,
         fit_loops=fit_loops,
-        Lambda=Lambda,
-        Mu=Mu,
         weights=weights,
         plot=plot,
         verbose=verbose,
     )
-    if new_edges is None:
+
+    if PG is None:
         print("Found no valid path to add")
         return
-    else:
-        if not inplace:
-            l = [new_inner_fraction, new_energy, [len(n) for n in new_part]]
-            df = pd.concat(
-                [pd.DataFrame(new_leaves)] + [pd.Series(i) for i in l], axis=1
-            )
-            df.columns = [
-                "source node",
-                "target node",
-                "inner fraction",
-                "energy",
-                "n° of points in path",
-            ]
-            df.index = ["" for i in df.index]
-            print("Suggested paths:")
-            print(df)
-        else:
-            adata.uns[key]["node_pos"] = merged_nodep
-            adata.uns[key]["edge"] = merged_edges
-            # update edge_len, conn, data projection
-            _store_graph_attributes(adata, X, key)
+    if inplace:
+        adata.uns[key]["node_pos"] = PG["addLoopsdict"]["merged_nodep"]
+        adata.uns[key]["edge"] = PG["addLoopsdict"]["merged_edges"]
+        # update edge_len, conn, data projection
+        _store_graph_attributes(adata, X, key)
 
 
 def add_path(
@@ -247,6 +225,10 @@ def add_path(
     n_nodes=None,
     use_weights=False,
     refit_graph=False,
+    Mu=None,
+    Lambda=None,
+    cycle_Mu=None,
+    cycle_Lambda=None,
     key="epg",
 ):
 
@@ -257,12 +239,18 @@ def add_path(
     )
 
     # --- Init parameters, variables
-    Mu = adata.uns[key]["params"]["epg_mu"]
-    Lambda = adata.uns[key]["params"]["epg_lambda"]
+    if Mu is None:
+        Mu = adata.uns[key]["params"]["epg_mu"]
+    if Lambda is None:
+        Lambda = adata.uns[key]["params"]["epg_lambda"]
+    if cycle_Mu is None:
+        cycle_Mu = Mu / 10
+    if cycle_Lambda is None:
+        cycle_Lambda = Lambda / 10
     if n_nodes is None:
         n_nodes = min(16, max(6, len(init_nodes_pos) / 20))
     if use_weights:
-        weights = adata.obs["pointweights"]
+        weights = np.array(adata.obs["pointweights"])[:, None]
     else:
         weights = None
 
@@ -299,15 +287,19 @@ def add_path(
     _merged_nodep = np.concatenate((init_nodes_pos, nodep[2:]))
 
     if refit_graph:
-        cycle_edges = elpigraph._graph_editing.find_all_cycles(
+        cycle_nodes = elpigraph._graph_editing.find_all_cycles(
             nx.Graph(_merged_edges.tolist())
         )[0]
 
-        Mus = np.repeat(Mu, len(_merged_nodep))
-        Mus[cycle_edges] = Mu / 10000
-        ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
-            _merged_edges, Lambdas=Lambda, Mus=Mus
+        ElasticMatrix = elpigraph.src.core.MakeUniformElasticMatrix_with_cycle(
+            _merged_edges,
+            Lambda=Lambda,
+            Mu=Mu,
+            cycle_Lambda=cycle_Lambda,
+            cycle_Mu=cycle_Mu,
+            cycle_nodes=cycle_nodes,
         )
+
         (
             _merged_nodep,
             _,
@@ -353,16 +345,26 @@ def del_path(
     nodes_to_include=None,
     use_weights=False,
     refit_graph=False,
+    Mu=None,
+    Lambda=None,
+    cycle_Mu=None,
+    cycle_Lambda=None,
     key="epg",
 ):
 
     X = _get_graph_data(adata, key)
 
     # --- Init parameters, variables
-    Mu = adata.uns[key]["params"]["epg_mu"]
-    Lambda = adata.uns[key]["params"]["epg_lambda"]
+    if Mu is None:
+        Mu = adata.uns[key]["params"]["epg_mu"]
+    if Lambda is None:
+        Lambda = adata.uns[key]["params"]["epg_lambda"]
+    if cycle_Mu is None:
+        cycle_Mu = Mu / 10
+    if cycle_Lambda is None:
+        cycle_Lambda = Lambda / 10
     if use_weights:
-        weights = adata.obs["pointweights"]
+        weights = np.array(adata.obs["pointweights"])[:, None]
     else:
         weights = None
 
@@ -412,15 +414,19 @@ def del_path(
     if refit_graph:
         nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
 
-        cycle_edges = elpigraph._graph_editing.find_all_cycles(
+        cycle_nodes = elpigraph._graph_editing.find_all_cycles(
             nx.Graph(edges.tolist())
         )[0]
 
-        Mus = np.repeat(Mu, len(nodep))
-        Mus[cycle_edges] = Mu / 10000
-        ElasticMatrix = elpigraph.src.core.Encode2ElasticMatrix(
-            edges, Lambdas=Lambda, Mus=Mus
+        ElasticMatrix = elpigraph.src.core.MakeUniformElasticMatrix_with_cycle(
+            edges,
+            Lambda=Lambda,
+            Mu=Mu,
+            cycle_Lambda=cycle_Lambda,
+            cycle_Mu=cycle_Mu,
+            cycle_nodes=cycle_nodes,
         )
+
         (
             newnodep,
             _,
