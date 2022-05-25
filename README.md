@@ -69,9 +69,11 @@ You should see the notebook open in your browser.
 Tutorial
 --------
 
-* Example for scRNA-seq: [1.1-STREAM_scRNA-seq (Bifurcation).ipynb](https://nbviewer.jupyter.org/github/pinellolab/STREAM/blob/master/tutorial/1.1.STREAM_scRNA-seq%20%28Bifurcation%29.ipynb?flush_cache=true)
+* Example for scRNA-seq: [1.1-STREAM2_scRNA-seq.ipynb](https://nbviewer.
+  jupyter.org/github/pinellolab/STREAM2_tutorials/blob/master/tutorial/1.1.STREAM_scRNA-seq%20%28Bifurcation%29.ipynb?flush_cache=true)
 
-* Example for scATAC-seq: [1.2-STREAM_scRNA-seq (Multifurcation) on 2D visulization.ipynb](https://nbviewer.jupyter.org/github/pinellolab/STREAM/blob/master/tutorial/1.2.use_vis.ipynb?flush_cache=true)
+* Example for scATAC-seq: [1.2-STREAM2_scATAC-seq.ipynb](https://nbviewer.
+  jupyter.org/github/pinellolab/STREAM2_tutorials/blob/master/tutorial/1.2.use_vis.ipynb?flush_cache=true)
 
 * Example for sc proteomics: [1.3-STREAM_scRNA-seq (Multifurcation) on original embedding.ipynb](https://nbviewer.jupyter.org/github/pinellolab/STREAM/blob/master/tutorial/1.2.STREAM_scRNA-seq%20%28Multifurcation%29.ipynb?flush_cache=true)
 
@@ -80,8 +82,6 @@ Tutorial
 * Example for share-seq: [2.2-STREAM_scATAC-seq_k-mers.ipynb](https://nbviewer.jupyter.org/github/pinellolab/STREAM/blob/master/tutorial/2.2.STREAM_scATAC-seq_k-mers.ipynb?flush_cache=true)
 
 * Example for modifying trajectories: [4-STREAM_complex_trajectories.ipynb](https://nbviewer.jupyter.org/github/pinellolab/STREAM/blob/master/tutorial/4.STREAM_complex_trajectories.ipynb?flush_cache=true)
-
-Tutorials for v0.4.1 and earlier versions can be found [here](https://github.com/pinellolab/STREAM/tree/master/tutorial/archives/v0.4.1_and_earlier_versions)
 
 Installation with Docker
 ------------------------

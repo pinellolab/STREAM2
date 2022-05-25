@@ -5,6 +5,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+import scipy
 
 
 def locate_elbow(
@@ -121,9 +122,15 @@ def get_expdata(
     adata, source=None, target=None, nodes_to_include=None, key="epg"
 ):
     cells, path_alias = get_path(adata, source, target, nodes_to_include, key)
+
+    if scipy.sparse.issparse(adata.X):
+        mat = adata.X.todense()
+    else:
+        mat = adata.X
+
     df_sc = pd.DataFrame(
         index=adata.obs_names.tolist(),
-        data=adata.X,
+        data=mat,
         columns=adata.var.index.tolist(),
     )
     df_cells = deepcopy(df_sc.loc[cells])
