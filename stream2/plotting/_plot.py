@@ -787,7 +787,7 @@ def _scatterplot2d_plotly(
 
 
 # TO-DO add 3D plot
-def umap(
+def dimension_reduction(
     adata,
     color=None,
     dict_palette=None,
@@ -814,7 +814,7 @@ def umap(
     plotly=False,
     **kwargs,
 ):
-    """Plot coordinates in UMAP.
+    """Plot coordinates in low dimensions.
 
     Parameters
     ----------
@@ -879,30 +879,31 @@ def umap(
         fig_path = os.path.join(settings.workdir, "figures")
 
     if n_components is None:
-        n_components = min(3, adata.obsm["X_umap"].shape[1])
+        n_components = min(3, adata.obsm["X_dr"].shape[1])
     if n_components not in [2, 3]:
         raise ValueError("n_components should be 2 or 3")
-    if n_components > adata.obsm["X_umap"].shape[1]:
+    if n_components > adata.obsm["X_dr"].shape[1]:
         print(
             f"`n_components` is greater than the available dimension.\n"
-            f"It is corrected to {adata.obsm['X_umap'].shape[1]}"
+            f"It is corrected to {adata.obsm['X_dr'].shape[1]}"
         )
-        n_components = adata.obsm["X_umap"].shape[1]
+        n_components = adata.obsm["X_dr"].shape[1]
 
     if dict_palette is None:
         dict_palette = dict()
     df_plot = pd.DataFrame(
         index=adata.obs.index,
-        data=adata.obsm["X_umap"],
+        data=adata.obsm["X_dr"],
         columns=[
-            "UMAP" + str(x + 1) for x in range(adata.obsm["X_umap"].shape[1])
+            "Dim_" + str(x + 1) for x in range(adata.obsm[
+                                                       "X_dr"].shape[1])
         ],
     )
     if color is None:
         _scatterplot2d(
             df_plot,
-            x="UMAP1",
-            y="UMAP2",
+            x="Dim_1",
+            y="Dim_2",
             drawing_order=drawing_order,
             size=size,
             fig_size=fig_size,
@@ -961,8 +962,8 @@ def umap(
         if plotly:
             _scatterplot2d_plotly(
                 df_plot,
-                x="UMAP1",
-                y="UMAP2",
+                x="Dim_1",
+                y="Dim_2",
                 list_hue=color,
                 hue_palette=dict_palette,
                 drawing_order=drawing_order,
@@ -977,8 +978,8 @@ def umap(
         else:
             _scatterplot2d(
                 df_plot,
-                x="UMAP1",
-                y="UMAP2",
+                x="Dim_1",
+                y="Dim_2",
                 list_hue=color,
                 hue_palette=dict_palette,
                 drawing_order=drawing_order,
@@ -1184,12 +1185,14 @@ def graph(
 
 def plot_features_in_pseudotime(
     adatas,
-    assays,
     features,
     source=None,
     target=None,
     nodes_to_include=None,
+    assays=None,
     frac=0.2,
+    height=400,
+    width=400,
     key="epg",
 ):
     fig = make_subplots(
@@ -1200,6 +1203,7 @@ def plot_features_in_pseudotime(
         df, path_alias = _utils.get_expdata(
             adatas[i], source, target, nodes_to_include, key
         )
+
         for j in range(len(features)):
             feature = features[j]
             fig.add_trace(
@@ -1208,7 +1212,6 @@ def plot_features_in_pseudotime(
                     y=df[feature],
                     opacity=0.8,
                     mode="markers",
-                    name=assays[i],
                 ),
                 row=j + 1,
                 col=i + 1,
@@ -1230,8 +1233,8 @@ def plot_features_in_pseudotime(
 
     fig.update_layout(
         dict(
-            height=400,
-            width=1000,
+            height=height,
+            width=width,
             plot_bgcolor="white",
             title_text=str(path_alias),
         )

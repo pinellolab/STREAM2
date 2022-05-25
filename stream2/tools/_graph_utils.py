@@ -266,9 +266,9 @@ def add_path(
     else:
         weights = None
 
-    SquaredX = np.sum(X ** 2, axis=1, keepdims=1)
+    SquaredX = np.sum(X**2, axis=1, keepdims=1)
     part, part_dist = elpigraph.src.core.PartitionData(
-        X, init_nodes_pos, 10 ** 6, SquaredX=SquaredX
+        X, init_nodes_pos, 10**6, SquaredX=SquaredX
     )
     clus = (part == source) | (part == target)
     X_fit = np.vstack(
@@ -498,12 +498,14 @@ def find_disconnected_components(
         raise ValueError(f"{groups} not found in adata.obs")
 
     sc.tl.paga(adata, groups=groups, neighbors_key=neighbors_key)
-    edges = np.argwhere(adata.uns["paga"]["connectivities"])
-    edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
+    # edges = np.argwhere(adata.uns["paga"]["connectivities"])
+    # edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
     g = nx.convert_matrix.from_scipy_sparse_matrix(
         adata.uns["paga"]["connectivities_tree"]
     )
-    comps = [list(c) for c in nx.algorithms.components.connected_components(g)]
+    comps = [
+        list(c) for c in nx.algorithms.components.connected_components(g)
+    ]
     clus_idx = [
         np.where(adata.obs[adata.uns["paga"]["groups"]].astype(int) == i)[0]
         for i in g.nodes
