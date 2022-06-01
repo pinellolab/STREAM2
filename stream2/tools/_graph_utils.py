@@ -244,9 +244,9 @@ def add_path(
     if Lambda is None:
         Lambda = adata.uns[key]["params"]["epg_lambda"]
     if cycle_Mu is None:
-        cycle_Mu = Mu / 10
+        cycle_Mu = Mu
     if cycle_Lambda is None:
-        cycle_Lambda = Lambda / 10
+        cycle_Lambda = Lambda
     if n_nodes is None:
         n_nodes = min(16, max(6, len(init_nodes_pos) / 20))
     if use_weights:
@@ -360,9 +360,9 @@ def del_path(
     if Lambda is None:
         Lambda = adata.uns[key]["params"]["epg_lambda"]
     if cycle_Mu is None:
-        cycle_Mu = Mu / 10
+        cycle_Mu = Mu
     if cycle_Lambda is None:
-        cycle_Lambda = Lambda / 10
+        cycle_Lambda = Lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
