@@ -11,6 +11,7 @@ from ._elpigraph import (
     _get_graph_data,
     _subset_adata,
 )
+from .._utils import stream2elpi
 
 
 def find_paths(
@@ -74,9 +75,7 @@ def find_paths(
         elif type(use_partition) is list:
             partitions = use_partition
         else:
-            raise ValueError(
-                "use_partition should be a bool or a list of partitions"
-            )
+            raise ValueError("use_partition should be a bool or a list of partitions")
 
         merged_nodep = []
         merged_edges = []
@@ -178,8 +177,7 @@ def _find_paths(
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
-                "adata.obs['pointweights'] not found. Please run"
-                " st2.tl.get_weights"
+                "adata.obs['pointweights'] not found. Please run" " st2.tl.get_weights"
             )
         weights = np.array(adata.obs["pointweights"]).reshape((-1, 1))
     else:
@@ -259,9 +257,7 @@ def add_path(
         X, init_nodes_pos, 10 ** 6, SquaredX=SquaredX
     )
     clus = (part == source) | (part == target)
-    X_fit = np.vstack(
-        (init_nodes_pos[source], init_nodes_pos[target], X[clus.flat])
-    )
+    X_fit = np.vstack((init_nodes_pos[source], init_nodes_pos[target], X[clus.flat]))
 
     # --- fit path
     _adata = sc.AnnData(X_fit)
@@ -378,18 +374,12 @@ def del_path(
 
     if nodes_to_include is None:
         # nodes on the shortest path
-        nodes_sp = nx.shortest_path(
-            G, source=source, target=target, weight="len"
-        )
+        nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
     else:
-        assert isinstance(
-            nodes_to_include, list
-        ), "`nodes_to_include` must be list"
+        assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
         # lists of simple paths, in order from shortest to longest
         list_paths = list(
-            nx.shortest_simple_paths(
-                G, source=source, target=target, weight="len"
-            )
+            nx.shortest_simple_paths(G, source=source, target=target, weight="len")
         )
         flag_exist = False
         for p in list_paths:
@@ -655,13 +645,14 @@ def smooth_ordinal_labels(
 def refit_graph(
     adata,
     use_weights=False,
-    shift_nodes_pos = {},
+    shift_nodes_pos={},
     Mu=None,
     Lambda=None,
     cycle_Mu=None,
-    cycle_Lambda=None,):
+    cycle_Lambda=None,
+):
 
-    X = _get_graph_data(adata, 'epg')
+    X = _get_graph_data(adata, "epg")
     init_nodes_pos, init_edges = (
         adata.uns["epg"]["node_pos"],
         adata.uns["epg"]["edge"],
@@ -669,9 +660,9 @@ def refit_graph(
 
     # --- Init parameters, variables
     if Mu is None:
-        Mu = adata.uns['epg']["params"]["epg_mu"]
+        Mu = adata.uns["epg"]["params"]["epg_mu"]
     if Lambda is None:
-        Lambda = adata.uns['epg']["params"]["epg_lambda"]
+        Lambda = adata.uns["epg"]["params"]["epg_lambda"]
     if cycle_Mu is None:
         cycle_Mu = Mu
     if cycle_Lambda is None:
@@ -680,17 +671,54 @@ def refit_graph(
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
         weights = None
-    
-    PG={'NodePositions':adata.uns['epg']['node_pos'].astype(float),'Edges':[adata.uns['epg']['edge']],}
-    elpigraph._graph_editing.refitGraph(X,PG=PG,
-               shift_nodes_pos = shift_nodes_pos,
-               PointWeights=weights,
-               Mu=Mu,
-               Lambda=Lambda,
-               cycle_Mu=cycle_Mu,
-               cycle_Lambda=cycle_Lambda,)
-    
-    adata.uns['epg']["node_pos"] = PG['NodePositions']
+
+    PG = {
+        "NodePositions": adata.uns["epg"]["node_pos"].astype(float),
+        "Edges": [adata.uns["epg"]["edge"]],
+    }
+    elpigraph._graph_editing.refitGraph(
+        X,
+        PG=PG,
+        shift_nodes_pos=shift_nodes_pos,
+        PointWeights=weights,
+        Mu=Mu,
+        Lambda=Lambda,
+        cycle_Mu=cycle_Mu,
+        cycle_Lambda=cycle_Lambda,
+    )
+
+    adata.uns["epg"]["node_pos"] = PG["NodePositions"]
 
     # update edge_len, conn, data projection
-    _store_graph_attributes(adata, X, 'epg')
+    _store_graph_attributes(adata, X, "epg")
+
+
+def extend_leaves(
+    adata,
+    Mode="QuantDists",
+    ControlPar=0.5,
+    DoSA=True,
+    DoSA_maxiter=200,
+    LeafIDs=None,
+    TrimmingRadius=float("inf"),
+    key="epg",
+):
+    X = _get_graph_data(adata, key)
+    init_nodes_pos, init_edges = (
+        adata.uns[key]["node_pos"],
+        adata.uns[key]["edge"],
+    )
+    PG = elpigraph.ExtendLeaves(
+        adata.obsm["X_dr"].astype(float),
+        PG=stream2elpi(adata, key),
+        Mode=Mode,
+        ControlPar=ControlPar,
+        DoSA=DoSA,
+        DoSA_maxiter=DoSA_maxiter,
+        LeafIDs=LeafIDs,
+        TrimmingRadius=TrimmingRadius,
+    )
+
+    adata.uns[key]["node_pos"] = PG["NodePositions"]
+    adata.uns[key]["edge"] = PG["Edges"][0]
+    _store_graph_attributes(adata, adata.obsm["X_dr"], key)
