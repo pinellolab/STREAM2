@@ -682,7 +682,7 @@ def refit_graph(
         weights = None
     
     PG={'NodePositions':adata.uns['epg']['node_pos'].astype(float),'Edges':[adata.uns['epg']['edge']],}
-    elpigraph.src._graph_editing.refitGraph(X,PG=PG,
+    elpigraph._graph_editing.refitGraph(X,PG=PG,
                shift_nodes_pos = shift_nodes_pos,
                PointWeights=weights,
                Mu=Mu,
