@@ -285,7 +285,9 @@ def add_path(
     if refit_graph:
         cycle_nodes = elpigraph._graph_editing.find_all_cycles(
             nx.Graph(_merged_edges.tolist())
-        )[0]
+        )
+        if len(cycle_nodes) > 0:
+            cycle_nodes = elpigraph._graph_editing.flatten(cycle_nodes)
 
         ElasticMatrix = elpigraph.src.core.MakeUniformElasticMatrix_with_cycle(
             _merged_edges,
@@ -404,9 +406,9 @@ def del_path(
     if refit_graph:
         nodep, edges = adata.uns["epg"]["node_pos"], adata.uns["epg"]["edge"]
 
-        cycle_nodes = elpigraph._graph_editing.find_all_cycles(
-            nx.Graph(edges.tolist())
-        )[0]
+        cycle_nodes = elpigraph._graph_editing.find_all_cycles(nx.Graph(edges.tolist()))
+        if len(cycle_nodes) > 0:
+            cycle_nodes = elpigraph._graph_editing.flatten(cycle_nodes)
 
         ElasticMatrix = elpigraph.src.core.MakeUniformElasticMatrix_with_cycle(
             edges,
