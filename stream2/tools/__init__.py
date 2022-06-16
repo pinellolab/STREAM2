@@ -9,6 +9,7 @@ from ._graph_utils import (
     del_path,
     find_paths,
     refit_graph,
+    extend_leaves,
     prune_graph,
     get_weights,
     get_component,
