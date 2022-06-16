@@ -650,3 +650,47 @@ def smooth_ordinal_labels(
     adata.obs["ps"] = elpigraph.utils.geodesic_pseudotime(
         mat, n_neighbors, root=root, g=g
     )
+
+
+def refit_graph(
+    adata,
+    use_weights=False,
+    shift_nodes_pos = {},
+    Mu=None,
+    Lambda=None,
+    cycle_Mu=None,
+    cycle_Lambda=None,):
+
+    X = _get_graph_data(adata, 'epg')
+    init_nodes_pos, init_edges = (
+        adata.uns["epg"]["node_pos"],
+        adata.uns["epg"]["edge"],
+    )
+
+    # --- Init parameters, variables
+    if Mu is None:
+        Mu = adata.uns['epg']["params"]["epg_mu"]
+    if Lambda is None:
+        Lambda = adata.uns['epg']["params"]["epg_lambda"]
+    if cycle_Mu is None:
+        cycle_Mu = Mu
+    if cycle_Lambda is None:
+        cycle_Lambda = Lambda
+    if use_weights:
+        weights = np.array(adata.obs["pointweights"])[:, None]
+    else:
+        weights = None
+    
+    PG={'NodePositions':adata.uns['epg']['node_pos'].astype(float),'Edges':[adata.uns['epg']['edge']],}
+    elpigraph.src._graph_editing.refitGraph(X,PG=PG,
+               shift_nodes_pos = shift_nodes_pos,
+               PointWeights=weights,
+               Mu=Mu,
+               Lambda=Lambda,
+               cycle_Mu=cycle_Mu,
+               cycle_Lambda=cycle_Lambda,)
+    
+    adata.uns['epg']["node_pos"] = PG['NodePositions']
+
+    # update edge_len, conn, data projection
+    _store_graph_attributes(adata, X, 'epg')
