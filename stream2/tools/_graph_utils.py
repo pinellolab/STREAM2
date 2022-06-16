@@ -246,6 +246,9 @@ def add_path(
     else:
         weights = None
 
+    PG = stream2elpi(adata, key)
+    PG["projection"] = {}
+    PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.addPath(
         X,
         PG=stream2elpi(adata, key),
