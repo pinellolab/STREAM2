@@ -251,7 +251,7 @@ def add_path(
     PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.addPath(
         X,
-        PG=stream2elpi(adata, key),
+        PG=PG,
         source=source,
         target=target,
         n_nodes=n_nodes,
@@ -300,9 +300,12 @@ def del_path(
     else:
         weights = None
 
+    PG = (stream2elpi(adata, key),)
+    PG["projection"] = {}
+    PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.delPath(
         X,
-        PG=stream2elpi(adata, key),
+        PG=PG,
         source=source,
         target=target,
         nodes_to_include=nodes_to_include,
