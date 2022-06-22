@@ -60,7 +60,9 @@ def locate_elbow(
     return elbow
 
 
-def get_path(adata, source=None, target=None, nodes_to_include=None, key="epg"):
+def get_path(
+    adata, source=None, target=None, nodes_to_include=None, key="epg"
+):
     #### Extract cells by provided nodes
 
     epg_edge = adata.uns[key]["edge"]
@@ -74,17 +76,25 @@ def get_path(adata, source=None, target=None, nodes_to_include=None, key="epg"):
     if target is None:
         target = adata.uns[f"{key}_pseudotime_params"]["target"]
     if nodes_to_include is None:
-        nodes_to_include = adata.uns[f"{key}_pseudotime_params"]["nodes_to_include"]
+        nodes_to_include = adata.uns[f"{key}_pseudotime_params"][
+            "nodes_to_include"
+        ]
 
     if target is not None:
         if nodes_to_include is None:
             # nodes on the shortest path
-            nodes_sp = nx.shortest_path(G, source=source, target=target, weight="len")
+            nodes_sp = nx.shortest_path(
+                G, source=source, target=target, weight="len"
+            )
         else:
-            assert isinstance(nodes_to_include, list), "`nodes_to_include` must be list"
+            assert isinstance(
+                nodes_to_include, list
+            ), "`nodes_to_include` must be list"
             # lists of simple paths, in order from shortest to longest
             list_paths = list(
-                nx.shortest_simple_paths(G, source=source, target=target, weight="len")
+                nx.shortest_simple_paths(
+                    G, source=source, target=target, weight="len"
+                )
             )
             flag_exist = False
             for p in list_paths:
@@ -107,7 +117,9 @@ def get_path(adata, source=None, target=None, nodes_to_include=None, key="epg"):
     return cells, path_alias
 
 
-def get_expdata(adata, source=None, target=None, nodes_to_include=None, key="epg"):
+def get_expdata(
+    adata, source=None, target=None, nodes_to_include=None, key="epg"
+):
     cells, path_alias = get_path(adata, source, target, nodes_to_include, key)
     df_sc = pd.DataFrame(
         index=adata.obs_names.tolist(),
@@ -116,7 +128,9 @@ def get_expdata(adata, source=None, target=None, nodes_to_include=None, key="epg
     )
     df_cells = deepcopy(df_sc.loc[cells])
     df_cells[f"{key}_pseudotime"] = adata.obs[f"{key}_pseudotime"][cells]
-    df_cells_sort = df_cells.sort_values(by=[f"{key}_pseudotime"], ascending=True)
+    df_cells_sort = df_cells.sort_values(
+        by=[f"{key}_pseudotime"], ascending=True
+    )
 
     return df_cells_sort, path_alias
 
@@ -127,7 +141,8 @@ def stream2elpi(adata, key="epg"):
         "Edges": [
             adata.uns[key]["edge"],
             np.repeat(
-                adata.uns[key]["params"]["epg_lambda"], len(adata.uns[key]["node_pos"])
+                adata.uns[key]["params"]["epg_lambda"],
+                len(adata.uns[key]["node_pos"]),
             ),
         ],
         "Lambda": adata.uns[key]["params"]["epg_lambda"],

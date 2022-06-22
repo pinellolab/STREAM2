@@ -75,7 +75,9 @@ def find_paths(
         elif type(use_partition) is list:
             partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool or a list of partitions")
+            raise ValueError(
+                "use_partition should be a bool" + "or a list of partitions"
+            )
 
         merged_nodep = []
         merged_edges = []
@@ -177,7 +179,7 @@ def _find_paths(
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
-                "adata.obs['pointweights'] not found. Please run" " st2.tl.get_weights"
+                "adata.obs['pointweights'] missing. Run st2.tl.get_weights"
             )
         weights = np.array(adata.obs["pointweights"]).reshape((-1, 1))
     else:
@@ -300,7 +302,7 @@ def del_path(
     else:
         weights = None
 
-    PG = (stream2elpi(adata, key),)
+    PG = stream2elpi(adata, key)
     PG["projection"] = {}
     PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.delPath(
