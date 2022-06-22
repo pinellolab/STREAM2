@@ -6,7 +6,6 @@ import scipy
 import elpigraph
 import networkx as nx
 from copy import deepcopy
-from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import SpectralClustering, AffinityPropagation, KMeans
 from sklearn.metrics.pairwise import pairwise_distances, euclidean_distances
 
@@ -14,22 +13,22 @@ from .._settings import settings
 
 
 def learn_graph(
-    adata,
-    method="principal_tree",
-    obsm="X_dr",
-    layer=None,
-    n_nodes=50,
-    epg_lambda=0.01,
-    epg_mu=0.1,
-    epg_alpha=0.02,
-    use_seed=True,
-    use_partition=False,
-    use_weights=False,
-    n_jobs=None,
-    ordinal_labels=None,
-    ordinal_supervision_strength=1,
-    ordinal_root_point=None,
-    **kwargs,
+        adata,
+        method="principal_tree",
+        obsm="X_dr",
+        layer=None,
+        n_nodes=50,
+        epg_lambda=0.01,
+        epg_mu=0.1,
+        epg_alpha=0.02,
+        use_seed=True,
+        use_partition=False,
+        use_weights=False,
+        n_jobs=None,
+        ordinal_labels=None,
+        ordinal_supervision_strength=1,
+        ordinal_root_point=None,
+        **kwargs,
 ):
     """Learn principal graph.
 
@@ -148,21 +147,21 @@ def learn_graph(
 
 
 def _learn_graph(
-    adata,
-    method="principal_tree",
-    obsm="X_dr",
-    layer=None,
-    n_nodes=50,
-    epg_lambda=0.01,
-    epg_mu=0.1,
-    epg_alpha=0.02,
-    use_seed=True,
-    use_weights=False,
-    ordinal_labels=None,
-    ordinal_supervision_strength=1,
-    ordinal_root_point=None,
-    n_jobs=None,
-    **kwargs,
+        adata,
+        method="principal_tree",
+        obsm="X_dr",
+        layer=None,
+        n_nodes=50,
+        epg_lambda=0.01,
+        epg_mu=0.1,
+        epg_alpha=0.02,
+        use_seed=True,
+        use_weights=False,
+        ordinal_labels=None,
+        ordinal_supervision_strength=1,
+        ordinal_root_point=None,
+        n_jobs=None,
+        **kwargs,
 ):
     """Learn principal graph.
 
@@ -205,8 +204,8 @@ def _learn_graph(
     if use_seed and (method == "principal_tree"):
         if "seed_epg" not in adata.uns:
             raise ValueError(
-                f"could not find 'seed_epg' in `adata.uns. Please run"
-                f" st.tl.seed_graph"
+                "could not find 'seed_epg' in `adata.uns. Please run"
+                " st.tl.seed_graph"
             )
         if n_nodes <= len(adata.uns["seed_epg"]["node_pos"]):
             raise ValueError(
@@ -224,11 +223,13 @@ def _learn_graph(
             mat = adata.X
     else:
         if (
-            use_seed
-            and (method != "principal_tree")
-            and ("seed_epg" in adata.uns)
+                use_seed
+                and (method != "principal_tree")
+                and ("seed_epg" in adata.uns)
         ):
-            print(f"WARNING: seed graph is ignored when using method {method}")
+            print(
+                f"WARNING: seed graph is ignored when using method {method}"
+            )
 
         kwargs["InitNodePositions"] = None
         kwargs["InitEdges"] = None
@@ -335,25 +336,24 @@ def _learn_graph(
 
 
 def seed_graph(
-    adata,
-    obsm="X_dr",
-    layer=None,
-    clustering="kmeans",
-    damping=0.75,
-    pref_perc=50,
-    n_clusters=10,
-    max_n_clusters=200,
-    n_neighbors=50,
-    nb_pct=None,
-    paths=[],
-    paths_forbidden=[],
-    label=None,
-    label_strength=0.5,
-    force=False,
-    use_weights=False,
-    use_partition=False,
+        adata,
+        obsm="X_dr",
+        layer=None,
+        clustering="kmeans",
+        damping=0.75,
+        pref_perc=50,
+        n_clusters=10,
+        max_n_clusters=200,
+        n_neighbors=50,
+        nb_pct=None,
+        paths=[],
+        paths_forbidden=[],
+        label=None,
+        label_strength=0.5,
+        force=False,
+        use_weights=False,
+        use_partition=False,
 ):
-
     """Seeding the initial elastic principal graph.
 
     Parameters
@@ -520,25 +520,24 @@ def seed_graph(
 
 
 def _seed_graph(
-    adata,
-    obsm="X_dr",
-    layer=None,
-    clustering="kmeans",
-    damping=0.75,
-    pref_perc=50,
-    n_clusters=10,
-    max_n_clusters=200,
-    n_neighbors=50,
-    nb_pct=None,
-    paths=[],
-    paths_forbidden=[],
-    label=None,
-    label_strength=0.5,
-    force=False,
-    use_weights=False,
-    verbose=True,
+        adata,
+        obsm="X_dr",
+        layer=None,
+        clustering="kmeans",
+        damping=0.75,
+        pref_perc=50,
+        n_clusters=10,
+        max_n_clusters=200,
+        n_neighbors=50,
+        nb_pct=None,
+        paths=[],
+        paths_forbidden=[],
+        label=None,
+        label_strength=0.5,
+        force=False,
+        use_weights=False,
+        verbose=True,
 ):
-
     """Internal method to seed_graph"""
 
     if verbose:
@@ -561,7 +560,7 @@ def _seed_graph(
     else:
         mat = adata.X
 
-    if nb_pct != None:
+    if nb_pct is not None:
         n_neighbors = int(np.around(mat.shape[0] * nb_pct))
 
     if verbose:
@@ -629,23 +628,23 @@ def _seed_graph(
             print("'" + clustering + "'" + " is not supported")
     adata.obs[clustering] = ["cluster " + str(x) for x in cluster_labels]
 
-    ### Minimum Spanning Tree ###
+    # Minimum Spanning Tree ###
     if verbose:
         print("Calculating minimum spanning tree...")
 
     # ---if supervised adjacency matrix option
     if (
-        ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None
+            ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None
     ) or (
-        ((len(paths) == 0) and (len(paths_forbidden) == 0))
-        and label is not None
+            ((len(paths) == 0) and (len(paths_forbidden) == 0))
+            and label is not None
     ):
         raise ValueError(
             "Both a label key (label: str) and cluster paths (paths: list of"
             " list) need to be provided for path-supervised initialization"
         )
     elif (
-        (len(paths) > 0) or (len(paths_forbidden) > 0)
+            (len(paths) > 0) or (len(paths_forbidden) > 0)
     ) and label is not None:
         (
             init_nodes_pos,
@@ -679,7 +678,7 @@ def _seed_graph(
             D, num_labels, num_modes, init_edges, paths, clus_adjmat
         )
 
-    ### Store results ###
+    # Store results ###
     adata.uns["seed_epg"] = dict()
     adata.uns["seed_epg"]["node_pos"] = init_nodes_pos
     adata.uns["seed_epg"]["edge"] = init_edges
@@ -703,7 +702,9 @@ def _store_graph_attributes(adata, mat, key):
     G = nx.Graph()
     G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
     mat_conn = nx.to_scipy_sparse_matrix(
-        G, nodelist=np.arange(len(adata.uns[key]["node_pos"])), weight="weight"
+        G,
+        nodelist=np.arange(len(adata.uns[key]["node_pos"])),
+        weight="weight",
     )
 
     # partition points
@@ -769,13 +770,10 @@ def _get_branch_id(adata, key="epg"):
     pd.options.mode.chained_assignment = "warn"
 
 
-#############################################
-### Categorical MST initialization utils ####
-#############################################
-
+# Categorical MST initialization utils ##
 
 def _force_missing_connections(
-    D, num_labels, num_modes, init_edges, paths, clus_adjmat
+        D, num_labels, num_modes, init_edges, paths, clus_adjmat
 ):
     found_missing = True
     while found_missing:
@@ -967,7 +965,7 @@ def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
 
 
 def _categorical_adjmat2(
-    mat, init_nodes_pos, paths, paths_forbidden, labels, factor
+        mat, init_nodes_pos, paths, paths_forbidden, labels, factor
 ):
     """Main function, create categorical adjmat given
     node positions, cluster paths, point labels."""
@@ -1055,9 +1053,9 @@ def _subset_adata(adata, part):
             p_adata.uns[key] = deepcopy(adata.uns[key])
             p_adata.uns[key]["node_pos"] = p_adata.uns[key]["node_pos"][
                 p_adata.uns[key]["node_partition"] == part
-            ]
+                ]
             p_adata.uns[key]["edge"] = p_adata.uns[key]["edge"][
                 p_adata.uns[key]["edge_partition"] == part
-            ]
+                ]
             p_adata.uns[key]["edge"] -= p_adata.uns[key]["edge"].min()
     return p_adata
