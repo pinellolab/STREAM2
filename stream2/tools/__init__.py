@@ -16,4 +16,5 @@ from ._graph_utils import (
     find_disconnected_components,
     ordinal_knn,
     smooth_ordinal_labels,
+    early_groups,
 )

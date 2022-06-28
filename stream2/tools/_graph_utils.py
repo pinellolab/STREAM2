@@ -614,3 +614,39 @@ def extend_leaves(
     adata.uns[key]["node_pos"] = PG["NodePositions"]
     adata.uns[key]["edge"] = PG["Edges"][0]
     _store_graph_attributes(adata, adata.obsm["X_dr"], key)
+
+
+def early_groups(
+    adata,
+    branch_nodes,
+    source,
+    target,
+    nodes_to_include=None,
+    flavor="ot_unbalanced",
+    n_windows=20,
+    n_neighbors=20,
+    ot_reg_e=0.01,
+    ot_reg_m=0.001,
+    key="epg",
+):
+
+    X = _get_graph_data(adata, key)
+    PG = stream2elpi(adata, key)
+    elpigraph.utils.early_groups(
+        X,
+        PG,
+        branch_nodes=branch_nodes,
+        source=source,
+        target=target,
+        nodes_to_include=nodes_to_include,
+        flavor=flavor,
+        n_windows=n_windows,
+        n_neighbors=n_neighbors,
+        ot_reg_e=ot_reg_e,
+        ot_reg_m=ot_reg_m,
+    )
+
+    s = "-".join(str(x) for x in branch_nodes)
+    adata.obs[f"early_groups_{source}->{s}"] = PG[
+        f"early_groups_{source}->{s}"
+    ]
