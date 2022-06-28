@@ -25,16 +25,16 @@ def test_stream2_rnaseq_paul15(adata, tmp_path):
     st.pp.pca(adata, feature='highly_variable', n_components=40)
     st.pl.pca_variance_ratio(adata, log=True)
 
-    st.tl.umap(adata, obsm='X_pca', n_dim=40, n_jobs=1)
-    st.pl.umap(adata, color=['paul15_clusters', 'n_genes'],
+    st.tl.dimension_reduction(adata, obsm='X_pca', n_dim=40, n_jobs=1)
+    st.pl.dimension_reduction(adata, color=['paul15_clusters', 'n_genes'],
                dict_drawing_order={
                    'paul15_clusters': 'random',
                    'n_genes': 'sorted'},
                fig_legend_ncol=2,
                fig_size=(5.5, 5))
 
-    st.tl.seed_graph(adata, obsm='X_umap')
-    st.tl.learn_graph(adata, obsm='X_umap')
+    st.tl.seed_graph(adata)
+    st.tl.learn_graph(adata)
     st.pl.graph(adata,
                 color=['paul15_clusters', 'n_genes'],
                 show_text=True,

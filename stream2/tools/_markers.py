@@ -7,7 +7,8 @@ import os
 from copy import deepcopy
 from statsmodels.sandbox.stats.multicomp import multipletests
 
-from . import infer_pseudotime
+from .. import _utils
+from .._settings import settings
 
 
 @nb.njit
@@ -28,7 +29,7 @@ def nb_unique1d(ar):
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
         mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
         mask[aux_firstnan] = True
-        mask[aux_firstnan + 1 :] = False
+        mask[aux_firstnan + 1:] = False
     else:
         mask[1:] = aux[1:] != aux[:-1]
 
@@ -58,7 +59,7 @@ def _xicorr(X, Y):
 
 @nb.njit
 def normal_cdf(x):
-    #'Cumulative distribution function for the standard normal distribution'
+    # 'Cumulative distribution function for the standard normal distribution'
     return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
 
 
@@ -102,7 +103,7 @@ def _xicorr_inner(x, y, n):
     cq = np.cumsum(qfr)
 
     m = (cq + (n - ind) * qfr) / n
-    b = np.mean(m ** 2)
+    b = np.mean(m**2)
     v = (ai - 2 * b + np.square(ci)) / np.square(CU)
 
     # sd = np.sqrt(v/n)
@@ -173,7 +174,7 @@ def _rankdata_inner(x):
 
 
 def p_val(r, n):
-    t = r * np.sqrt((n - 2) / (1 - r ** 2))
+    t = r * np.sqrt((n - 2) / (1 - r**2))
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
@@ -222,9 +223,6 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
 
 def detect_transition_markers(
     adata,
-    source,
-    target,
-    nodes_to_include=None,
     percentile_expr=95,
     min_num_cells=5,
     fc_cutoff=1,
@@ -232,26 +230,38 @@ def detect_transition_markers(
     key="epg",
 ):
 
-    file_path = os.path.join(adata.uns["workdir"], "transition_markers")
+    file_path = os.path.join(settings.workdir, "transition_markers")
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    # Extract cells by provided nodes
-    infer_pseudotime(
-        adata,
-        source=source,
-        target=target,
-        nodes_to_include=nodes_to_include,
-        key=key,
+    # Extract cells by parameters in previous infer_pseudotime() step
+    path_source = adata.uns[f"{key}_pseudotime_params"]["source"]
+    path_target = adata.uns[f"{key}_pseudotime_params"]["target"]
+    nodes_to_include_path = adata.uns[f"{key}_pseudotime_params"][
+        "nodes_to_include"
+    ]
+
+    if path_target is None:
+        print(
+            "Please re-run infer_pseudotime() and specify value for "
+            "parameter target"
+        )
+        exit()
+
+    cells, path_alias = _utils.get_path(
+        adata, path_source, path_target, nodes_to_include_path, key
     )
-    cells = adata.obs_names[~np.isnan(adata.obs[f"{key}_pseudotime"])]
-    path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
 
     # Scale matrix with expressed markers
     input_markers = adata.var_names.tolist()
+    if scipy.sparse.issparse(adata.X):
+        mat = adata[:, input_markers].X.todense()
+    else:
+        mat = adata[:, input_markers].X
+
     df_sc = pd.DataFrame(
         index=adata.obs_names.tolist(),
-        data=adata[:, input_markers].X,
+        data=mat,
         columns=input_markers,
     )
 
@@ -270,7 +280,9 @@ def detect_transition_markers(
     )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
-    print(str(len(input_markers_expressed)) + " markers are being scanned ...")
+    print(
+        str(len(input_markers_expressed)) + " markers are being scanned ..."
+    )
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
@@ -319,9 +331,9 @@ def detect_transition_markers(
     if sum(ix_cutoff) == 0:
         print(
             "No Transition markers are detected in branch with nodes "
-            + str(source)
+            + str(path_source)
             + " to "
-            + str(target)
+            + str(path_target)
         )
 
     else:
@@ -366,7 +378,9 @@ def detect_transition_markers(
         df_stat_pval_qval["qval"] = q_values
         df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
         df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
-        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(
+            axis=0
+        )
         df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
@@ -375,9 +389,9 @@ def detect_transition_markers(
             os.path.join(
                 file_path,
                 "transition_markers_path_"
-                + str(source)
+                + str(path_source)
                 + "-"
-                + str(target)
+                + str(path_target)
                 + ".tsv",
             ),
             sep="\t",

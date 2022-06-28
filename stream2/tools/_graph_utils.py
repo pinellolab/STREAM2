@@ -386,12 +386,14 @@ def find_disconnected_components(
         raise ValueError(f"{groups} not found in adata.obs")
 
     sc.tl.paga(adata, groups=groups, neighbors_key=neighbors_key)
-    edges = np.argwhere(adata.uns["paga"]["connectivities"])
-    edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
+    # edges = np.argwhere(adata.uns["paga"]["connectivities"])
+    # edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
     g = nx.convert_matrix.from_scipy_sparse_matrix(
         adata.uns["paga"]["connectivities_tree"]
     )
-    comps = [list(c) for c in nx.algorithms.components.connected_components(g)]
+    comps = [
+        list(c) for c in nx.algorithms.components.connected_components(g)
+    ]
     clus_idx = [
         np.where(adata.obs[adata.uns["paga"]["groups"]].astype(int) == i)[0]
         for i in g.nodes

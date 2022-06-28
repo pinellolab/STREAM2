@@ -6,7 +6,7 @@ from ._plot import (
     variable_genes,
     violin,
     hist,
-    umap,
+    dimension_reduction,
     graph,
     plot_features_in_pseudotime,
 )
