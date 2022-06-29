@@ -391,9 +391,7 @@ def find_disconnected_components(
     g = nx.convert_matrix.from_scipy_sparse_matrix(
         adata.uns["paga"]["connectivities_tree"]
     )
-    comps = [
-        list(c) for c in nx.algorithms.components.connected_components(g)
-    ]
+    comps = [list(c) for c in nx.algorithms.components.connected_components(g)]
     clus_idx = [
         np.where(adata.obs[adata.uns["paga"]["groups"]].astype(int) == i)[0]
         for i in g.nodes
@@ -651,4 +649,7 @@ def early_groups(
     s = "-".join(str(x) for x in branch_nodes)
     adata.obs[f"early_groups_{source}->{s}"] = PG[
         f"early_groups_{source}->{s}"
+    ]
+    adata.obs[f"early_groups_{source}->{s}_clusters"] = PG[
+        f"early_groups_{source}->{s}_clusters"
     ]
