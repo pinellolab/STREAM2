@@ -140,3 +140,18 @@ def get_expdata(
     )
 
     return df_cells_sort, path_alias
+
+def stream2elpi(adata, key="epg"):
+    PG = {
+        "NodePositions": adata.uns[key]["node_pos"].astype(float),
+        "Edges": [
+            adata.uns[key]["edge"],
+            np.repeat(
+                adata.uns[key]["params"]["epg_lambda"],
+                len(adata.uns[key]["node_pos"]),
+            ),
+        ],
+        "Lambda": adata.uns[key]["params"]["epg_lambda"],
+        "Mu": adata.uns[key]["params"]["epg_mu"],
+    }
+    return PG
