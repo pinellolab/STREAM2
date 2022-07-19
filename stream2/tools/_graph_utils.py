@@ -2,8 +2,9 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
-import pandas as pd
-from shapely.geometry import MultiLineString, LineString
+import statsmodels.api
+from sklearn.neighbors import KNeighborsRegressor
+
 
 from ._elpigraph import (
     learn_graph,
@@ -636,3 +637,68 @@ def early_groups(
     adata.obs[f"early_groups_{source}->{s}_clusters"] = PG[
         f"early_groups_{source}->{s}_clusters"
     ]
+
+def interpolate(
+    adata,
+    t_len=200,
+    method="knn",
+    frac=0.1,
+    n_neighbors="auto",
+    weights="uniform",
+    key="epg",
+):
+    """Resample adata.X by interpolation along pseudotime with t_len values
+
+    Parameters
+    ----------
+    t_len: int
+        Number of pseudotime values to resample
+    method: str
+        'knn' for sklearn.neighbors.KNeighborsRegressor
+        'lowess' for statsmodels.api.nonparametric.lowess (can be slow)
+    frac: float 0-1
+        lowess frac parameter
+    n_neighbors: int
+        KNeighborsRegressor n_neighbors parameter
+    weights: str, 'uniform' or 'distance'
+        KNeighborsRegressor weights parameter.
+
+    Returns
+    -------
+    t_new: np.array
+        Resampled pseudotime values
+    interp: np.array
+        Resampled adata.X
+    """
+
+    X = adata.X
+    pseudotime = adata.obs[f"{key}_pseudotime"]
+
+    idx_path = ~np.isnan(pseudotime)
+    X_path = X[idx_path]
+
+    t_path = np.array(pseudotime[idx_path]).reshape(-1, 1)
+    t_new = np.linspace(pseudotime.min(), pseudotime.max(), t_len).reshape(
+        -1, 1
+    )
+
+    if method == "knn":
+        if n_neighbors == "auto":
+            n_neighbors = int(len(X_path) * 0.05)
+        reg = KNeighborsRegressor(n_neighbors=n_neighbors, weights=weights)
+        interp = reg.fit(X=t_path, y=X_path).predict(t_new)
+
+    elif method == "lowess":  # very slow
+        interp = np.zeros((t_len, X_path.shape[1]))
+        for i in range(X_path.shape[1]):
+            interp[:, i] = statsmodels.api.nonparametric.lowess(
+                X_path[:, i],
+                t_path.flat,
+                it=1,
+                frac=frac,
+                xvals=t_new.flat,
+                return_sorted=False,
+            )
+    else:
+        raise ValueError("method must be one of 'knn','lowess'")
+    return t_new, interp

@@ -11,8 +11,77 @@ from .. import _utils
 from .._settings import settings
 
 
+def spearman_columns(A, B):
+    """Spearman correlation over columns
+    A,B: np.arrays with same shape
+
+    Returns
+    -------
+    correlations: np.array
+        correlations[i] = spearman_corrcoef(A[:,i],B[:,i])
+    """
+    assert A.shape == B.shape
+    return pearson_corr(rankdata(A.T), rankdata(B.T))
+
+
+def spearman_pairwise(A, B):
+    """Spearman correlation matrix
+    A,B: np.arrays with same shape
+
+    Returns
+    -------
+    correlations: np.array
+        correlations[i,j] = spearman_corrcoef(A[:,i],B[:,j])
+    """
+    n, m = A.shape[1], B.shape[1]
+    i, j = np.ones((n, m)).nonzero()
+    return pearson_corr(rankdata(A.T[i]), rankdata(B.T[j])).reshape(n, m)
+
+
+@nb.njit(parallel=True)
+def xicorr_columns(A, B):
+    """XI correlation over columns
+    A,B: 2d np.arrays with same shape
+
+    Returns
+    -------
+    correlations:
+        correlations[i] = xi_corrcoef(A[:,i],B[:,i])
+    """
+    assert A.shape == B.shape
+    n, m = A.shape
+    corrs = np.zeros(m)
+    pvals = np.zeros(m)
+    for i in nb.prange(m):
+        corrs[i], pvals[i] = xicorr(A[:, i], B[:, i], n)
+    return corrs, pvals
+
+
+@nb.njit(parallel=True)
+def xicorr_pairwise(A, B):
+    """XI correlation over columns
+    A,B: 2d np.arrays with same shape
+
+    Returns
+    -------
+    correlations:
+        correlations[i] = xi_corrcoef(A[:,i],B[:,i])
+    """
+    assert A.shape == B.shape
+    ns = len(A)
+
+    n, m = A.shape[1], B.shape[1]
+
+    corrs = np.ones((n, m))
+    pvals = np.ones((n, m))
+    for i in nb.prange(n):
+        for j in nb.prange(m):
+            corrs[i, j], pvals[i, j] = xicorr(A[:, i], B[:, j], ns)
+    return corrs, pvals
+
+
 @nb.njit
-def nb_unique1d(ar):
+def _nb_unique1d(ar):
     """Numba speedup."""
     ar = ar.flatten()
     perm = ar.argsort(kind="mergesort")
@@ -43,32 +112,17 @@ def nb_unique1d(ar):
 
 
 @nb.njit
-def _xicorr(X, Y):
-    """xi correlation coefficient X,Y 0 dimensional np.arrays."""
-    n = X.size
-    xi = np.argsort(X, kind="quicksort")
-    Y = Y[xi]
-    _, _, b, c = nb_unique1d(Y)
-    r = np.cumsum(c)[b]
-    _, _, b, c = nb_unique1d(-Y)
-    cumsum = np.cumsum(c)[b]
-    return 1 - n * np.abs(np.diff(r)).sum() / (
-        2 * (cumsum * (n - cumsum)).sum()
-    )
-
-
-@nb.njit
 def normal_cdf(x):
-    # 'Cumulative distribution function for the standard normal distribution'
+    """Cumulative distribution function for the standard normal distribution"""
     return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
 
 
 @nb.njit
-def avg_ties(X):
+def average_ties(X):
     """Same as scipy.stats.rankdata method="average"."""
     xi = np.argsort(X)
     xi_rank = np.argsort(xi)
-    unique, _, inverse, c_ = nb_unique1d(X)
+    unique, _, inverse, c_ = _nb_unique1d(X)
     unique_rank_sum = np.zeros_like(unique)
     for i0, inv in enumerate(inverse):
         unique_rank_sum[inv] += xi_rank[i0]
@@ -80,13 +134,50 @@ def avg_ties(X):
     return rank_mean + 1
 
 
+def average_stat(
+    mdata,
+    transition_markers,
+):
+    """Average correlation coefficients
+    doi.org/10.3758/BF03334037
+    """
+    counts = pd.Series(
+        {
+            assay: sum(~np.isnan(adata.obs["epg_pseudotime"]))
+            for assay, adata in mdata.mod.items()
+        }
+    )
+
+    joint_index = set.intersection(
+        *[set(df.index) for df in transition_markers.values()]
+    )
+    joint_dfs = {
+        assay: df.loc[joint_index] for assay, df in transition_markers.items()
+    }
+
+    joint_stats = pd.concat(
+        [df["stat"] for assay, df in joint_dfs.items()], axis=1
+    )
+    joint_stats.columns = joint_dfs.keys()
+
+    avg_stat = np.tanh(
+        np.sum(
+            np.arctanh(joint_stats)
+            * (counts - 3)
+            / (sum(counts) - 3 * len(counts)),
+            axis=1,
+        )
+    )
+    return avg_stat
+
+
 @nb.njit
-def _xicorr_inner(x, y, n):
+def xicorr(x, y, n):
     """Translated from R https://github.com/cran/XICOR/"""
     # ---corr
-    PI = avg_ties(x)
-    fr = avg_ties(y) / n
-    gr = avg_ties(-y) / n
+    PI = average_ties(x)
+    fr = average_ties(y) / n
+    gr = average_ties(-y) / n
     fr = fr[np.argsort(PI, kind="mergesort")]
 
     CU = np.mean(gr * (1 - gr))
@@ -112,21 +203,25 @@ def _xicorr_inner(x, y, n):
 
 
 @nb.njit(parallel=True)
-def _xicorr_loop_parallel(X, y):
-    """Numba fast parallel xi correlation coefficient X,Y 0 dimensional
-    np.arrays."""
+def xicorr_ps(X, y):
+    """Fast xi correlation coefficient
+    X: 2d np.array
+    y: 0d np.array
+    """
     n = len(X)
     corrs = np.zeros(X.shape[1])
     pvals = np.zeros(X.shape[1])
     for i in nb.prange(X.shape[1]):
-        corrs[i], pvals[i] = _xicorr_inner(X[:, i], y, n)
+        corrs[i], pvals[i] = xicorr(X[:, i], y, n)
     return corrs, pvals
 
 
-def nb_spearman(x, Y):
-    """Fast equivalent to for i in range(y.shape[1]):
-    spearmanr(x,y[:,i]).correlation."""
-    return pearson_corr(_rankdata(x[None]), _rankdata(Y.T))
+def spearman_ps(y, X):
+    """Fast spearman correlation coefficient
+    X: 2d np.array
+    y: 0d np.array
+    """
+    return pearson_corr(rankdata(y[None]), rankdata(X.T))
 
 
 def pearson_corr(arr1, arr2):
@@ -147,7 +242,7 @@ def pearson_corr(arr1, arr2):
 
 
 @nb.njit(parallel=True, fastmath=True)
-def _rankdata(X):
+def rankdata(X):
     """reimplementing scipy.stats.rankdata faster."""
     tmp = np.zeros_like(X)
     for i in nb.prange(X.shape[0]):
@@ -157,7 +252,7 @@ def _rankdata(X):
 
 @nb.njit
 def _rankdata_inner(x):
-    """inner loop for _rankdata."""
+    """inner loop for rankdata."""
     sorter = np.argsort(x)
 
     inv = np.empty(sorter.size, dtype=np.intp)
@@ -351,7 +446,7 @@ def detect_transition_markers(
         )
 
         if method == "spearman":
-            df_stat_pval_qval["stat"] = nb_spearman(
+            df_stat_pval_qval["stat"] = spearman_ps(
                 np.array(pseudotime_cells_sort),
                 np.array(df_cells_sort.iloc[:, ix_cutoff]),
             )
@@ -361,7 +456,7 @@ def detect_transition_markers(
         elif method == "xi":
             # /!\ dont use df_cells_sort
             # and pseudotime_cells_sort, breaks xicorr
-            res = _xicorr_loop_parallel(
+            res = xicorr_ps(
                 np.array(df_cells.iloc[:, ix_cutoff]),
                 np.array(pseudotime_cells),
             )

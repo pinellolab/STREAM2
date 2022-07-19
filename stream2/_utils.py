@@ -1,10 +1,10 @@
 """Utility functions and classes."""
 
 from kneed import KneeLocator
+from copy import deepcopy
 import networkx as nx
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 import scipy
 
 
