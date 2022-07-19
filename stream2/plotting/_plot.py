@@ -922,7 +922,7 @@ def dimension_reduction(
             if ann in adata.obs_keys():
                 df_plot[ann] = adata.obs[ann]
                 if not is_numeric_dtype(df_plot[ann]):
-                    if "color" not in adata.uns_keys():
+                    if "color" not in adata.uns.keys():
                         adata.uns["color"] = dict()
 
                     if ann not in dict_palette.keys():
@@ -1089,7 +1089,7 @@ def graph(
             if ann in adata.obs_keys():
                 df_plot[ann] = adata.obs[ann]
                 if not is_numeric_dtype(df_plot[ann]):
-                    if "color" not in adata.uns_keys():
+                    if "color" not in adata.uns.keys():
                         adata.uns["color"] = dict()
 
                     if ann not in dict_palette.keys():

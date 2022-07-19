@@ -29,7 +29,7 @@ def nb_unique1d(ar):
             aux_firstnan = np.searchsorted(aux, aux[-1], side="left")
         mask[1:aux_firstnan] = aux[1:aux_firstnan] != aux[: aux_firstnan - 1]
         mask[aux_firstnan] = True
-        mask[aux_firstnan + 1:] = False
+        mask[aux_firstnan + 1 :] = False
     else:
         mask[1:] = aux[1:] != aux[:-1]
 
@@ -103,7 +103,7 @@ def _xicorr_inner(x, y, n):
     cq = np.cumsum(qfr)
 
     m = (cq + (n - ind) * qfr) / n
-    b = np.mean(m**2)
+    b = np.mean(m ** 2)
     v = (ai - 2 * b + np.square(ci)) / np.square(CU)
 
     # sd = np.sqrt(v/n)
@@ -174,7 +174,7 @@ def _rankdata_inner(x):
 
 
 def p_val(r, n):
-    t = r * np.sqrt((n - 2) / (1 - r**2))
+    t = r * np.sqrt((n - 2) / (1 - r ** 2))
     return scipy.stats.t.sf(np.abs(t), n - 1) * 2
 
 
@@ -201,7 +201,7 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
             df_neg.iloc[:, i] = df_gene - minValues[i]
         df_neg = df_neg.copy(deep=True)
         maxValues = df_neg.max(axis=0)
-        df_neg_scaled = df_neg / maxValues[:, None].T
+        df_neg_scaled = df_neg / np.array(maxValues)[:, None].T
     else:
         df_neg_scaled = pd.DataFrame(index=df_neg.index)
 
@@ -209,7 +209,7 @@ def scale_marker_expr(df_marker_detection, percentile_expr):
         maxValues = df_pos.apply(
             lambda x: np.percentile(x[x > 0], percentile_expr), axis=0
         )
-        df_pos_scaled = df_pos / maxValues[:, None].T
+        df_pos_scaled = df_pos / np.array(maxValues)[:, None].T
         df_pos_scaled[df_pos_scaled > 1] = 1
     else:
         df_pos_scaled = pd.DataFrame(index=df_pos.index)
@@ -280,9 +280,7 @@ def detect_transition_markers(
     )
     adata.uns["scaled_marker_expr"] = df_scaled_marker_expr
 
-    print(
-        str(len(input_markers_expressed)) + " markers are being scanned ..."
-    )
+    print(str(len(input_markers_expressed)) + " markers are being scanned ...")
 
     df_cells = deepcopy(df_scaled_marker_expr.loc[cells])
     pseudotime_cells = adata.obs[f"{key}_pseudotime"][cells]
@@ -378,9 +376,7 @@ def detect_transition_markers(
         df_stat_pval_qval["qval"] = q_values
         df_stat_pval_qval["initial_mean"] = values_initial.mean(axis=0)
         df_stat_pval_qval["final_mean"] = values_final.mean(axis=0)
-        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(
-            axis=0
-        )
+        df_stat_pval_qval["initial_mean_ori"] = values_initial_ori.mean(axis=0)
         df_stat_pval_qval["final_mean_ori"] = values_final_ori.mean(axis=0)
 
         dict_tg_edges[path_alias] = df_stat_pval_qval.sort_values(["qval"])
