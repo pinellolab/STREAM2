@@ -1,10 +1,10 @@
 """Utility functions and classes."""
 
 from kneed import KneeLocator
+from copy import deepcopy
 import networkx as nx
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 import scipy
 
 
@@ -141,6 +141,7 @@ def get_expdata(
 
     return df_cells_sort, path_alias
 
+
 def stream2elpi(adata, key="epg"):
     PG = {
         "NodePositions": adata.uns[key]["node_pos"].astype(float),
@@ -153,5 +154,6 @@ def stream2elpi(adata, key="epg"):
         ],
         "Lambda": adata.uns[key]["params"]["epg_lambda"],
         "Mu": adata.uns[key]["params"]["epg_mu"],
+        "projection": {"edge_len": adata.uns[key]["edge_len"]},
     }
     return PG

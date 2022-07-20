@@ -2,8 +2,9 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
-import pandas as pd
-from shapely.geometry import MultiLineString, LineString
+import statsmodels.api
+from sklearn.neighbors import KNeighborsRegressor
+
 
 from ._elpigraph import (
     learn_graph,
@@ -232,8 +233,6 @@ def add_path(
     key="epg",
 ):
 
-    X = _get_graph_data(adata, key)
-
     # --- Init parameters, variables
     if Mu is None:
         Mu = adata.uns[key]["params"]["epg_mu"]
@@ -248,9 +247,8 @@ def add_path(
     else:
         weights = None
 
+    X = _get_graph_data(adata, key)
     PG = stream2elpi(adata, key)
-    PG["projection"] = {}
-    PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.addPath(
         X,
         PG=PG,
@@ -286,8 +284,6 @@ def del_path(
     key="epg",
 ):
 
-    X = _get_graph_data(adata, key)
-
     # --- Init parameters, variables
     if Mu is None:
         Mu = adata.uns[key]["params"]["epg_mu"]
@@ -302,9 +298,8 @@ def del_path(
     else:
         weights = None
 
+    X = _get_graph_data(adata, key)
     PG = stream2elpi(adata, key)
-    PG["projection"] = {}
-    PG["projection"]["edge_len"] = adata.uns[key]["edge_len"]
     PG = elpigraph.delPath(
         X,
         PG=PG,
@@ -542,19 +537,13 @@ def refit_graph(
     Lambda=None,
     cycle_Mu=None,
     cycle_Lambda=None,
+    key="epg",
 ):
-
-    X = _get_graph_data(adata, "epg")
-    init_nodes_pos, init_edges = (
-        adata.uns["epg"]["node_pos"],
-        adata.uns["epg"]["edge"],
-    )
-
     # --- Init parameters, variables
     if Mu is None:
-        Mu = adata.uns["epg"]["params"]["epg_mu"]
+        Mu = adata.uns[key]["params"]["epg_mu"]
     if Lambda is None:
-        Lambda = adata.uns["epg"]["params"]["epg_lambda"]
+        Lambda = adata.uns[key]["params"]["epg_lambda"]
     if cycle_Mu is None:
         cycle_Mu = Mu
     if cycle_Lambda is None:
@@ -564,10 +553,8 @@ def refit_graph(
     else:
         weights = None
 
-    PG = {
-        "NodePositions": adata.uns["epg"]["node_pos"].astype(float),
-        "Edges": [adata.uns["epg"]["edge"]],
-    }
+    X = _get_graph_data(adata, key)
+    PG = stream2elpi(adata, key)
     elpigraph._graph_editing.refitGraph(
         X,
         PG=PG,
@@ -579,10 +566,10 @@ def refit_graph(
         cycle_Lambda=cycle_Lambda,
     )
 
-    adata.uns["epg"]["node_pos"] = PG["NodePositions"]
+    adata.uns[key]["node_pos"] = PG["NodePositions"]
 
     # update edge_len, conn, data projection
-    _store_graph_attributes(adata, X, "epg")
+    _store_graph_attributes(adata, X, key)
 
 
 def extend_leaves(
@@ -596,12 +583,9 @@ def extend_leaves(
     key="epg",
 ):
     X = _get_graph_data(adata, key)
-    init_nodes_pos, init_edges = (
-        adata.uns[key]["node_pos"],
-        adata.uns[key]["edge"],
-    )
+
     PG = elpigraph.ExtendLeaves(
-        adata.obsm["X_dr"].astype(float),
+        X.astype(float),
         PG=stream2elpi(adata, key),
         Mode=Mode,
         ControlPar=ControlPar,
@@ -653,3 +637,68 @@ def early_groups(
     adata.obs[f"early_groups_{source}->{s}_clusters"] = PG[
         f"early_groups_{source}->{s}_clusters"
     ]
+
+def interpolate(
+    adata,
+    t_len=200,
+    method="knn",
+    frac=0.1,
+    n_neighbors="auto",
+    weights="uniform",
+    key="epg",
+):
+    """Resample adata.X by interpolation along pseudotime with t_len values
+
+    Parameters
+    ----------
+    t_len: int
+        Number of pseudotime values to resample
+    method: str
+        'knn' for sklearn.neighbors.KNeighborsRegressor
+        'lowess' for statsmodels.api.nonparametric.lowess (can be slow)
+    frac: float 0-1
+        lowess frac parameter
+    n_neighbors: int
+        KNeighborsRegressor n_neighbors parameter
+    weights: str, 'uniform' or 'distance'
+        KNeighborsRegressor weights parameter.
+
+    Returns
+    -------
+    t_new: np.array
+        Resampled pseudotime values
+    interp: np.array
+        Resampled adata.X
+    """
+
+    X = adata.X
+    pseudotime = adata.obs[f"{key}_pseudotime"]
+
+    idx_path = ~np.isnan(pseudotime)
+    X_path = X[idx_path]
+
+    t_path = np.array(pseudotime[idx_path]).reshape(-1, 1)
+    t_new = np.linspace(pseudotime.min(), pseudotime.max(), t_len).reshape(
+        -1, 1
+    )
+
+    if method == "knn":
+        if n_neighbors == "auto":
+            n_neighbors = int(len(X_path) * 0.05)
+        reg = KNeighborsRegressor(n_neighbors=n_neighbors, weights=weights)
+        interp = reg.fit(X=t_path, y=X_path).predict(t_new)
+
+    elif method == "lowess":  # very slow
+        interp = np.zeros((t_len, X_path.shape[1]))
+        for i in range(X_path.shape[1]):
+            interp[:, i] = statsmodels.api.nonparametric.lowess(
+                X_path[:, i],
+                t_path.flat,
+                it=1,
+                frac=frac,
+                xvals=t_new.flat,
+                return_sorted=False,
+            )
+    else:
+        raise ValueError("method must be one of 'knn','lowess'")
+    return t_new, interp
