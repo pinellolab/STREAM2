@@ -463,18 +463,21 @@ def ordinal_knn(
     metric: str
         One of sklearn's distance metrics
     method : str (default='force')
-        if 'force', searches for each point at stage[i] n_neighbors nearest neighbors, forcing:
+        if 'force', for each point at stage[i] get n_neighbors, forcing:
             - n_neighbors/3 to be from stage[i-1]
             - n_neighbors/3 to be from stage[i]
             - n_neighbors/3 to be from stage[i+1]
             For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
 
-        if 'guide', searches for each point at stage[i] n_neighbors nearest neighbors
-            from points in {stage[i-1], stage[i], stage[i+1]}, without constraints on proportions
+        if 'guide', for each point at stage[i] get n_neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]},
+            without constraints on proportions
     return_sparse: bool
-        Whether to return the graph in sparse form or as longform indices and distances
+        Whether to return the graph in sparse form
+        or as longform indices and distances
     stages: list
-        Ordered list of ordinal label stages (low to high). If None, taken as np.unique(ordinal_label)
+        Ordered list of ordinal label stages (low to high).
+        If None, taken as np.unique(ordinal_label)
 
     Returns
     -------
@@ -542,18 +545,21 @@ def smooth_ordinal_labels(
     metric: str
         One of sklearn's distance metrics
     method : str (default='force')
-        if 'force', searches for each point at stage[i] n_neighbors nearest neighbors, forcing:
+        if 'force', for each point at stage[i] get n_neighbors, forcing:
             - n_neighbors/3 to be from stage[i-1]
             - n_neighbors/3 to be from stage[i]
             - n_neighbors/3 to be from stage[i+1]
             For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
 
-        if 'guide', searches for each point at stage[i] n_neighbors nearest neighbors
-            from points in {stage[i-1], stage[i], stage[i+1]}, without constraints on proportions
+        if 'guide', for each point at stage[i] get n_neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]},
+            without constraints on proportions
     return_sparse: bool
-        Whether to return the graph in sparse form or as longform indices and distances
+        Whether to return the graph in sparse form
+        or as longform indices and distances
     stages: list
-        Ordered list of ordinal label stages (low to high). If None, taken as np.unique(ordinal_label)
+        Ordered list of ordinal label stages (low to high).
+        If None, taken as np.unique(ordinal_label)
 
     Returns
     -------
@@ -614,9 +620,9 @@ def refit_graph(
     epg_lambda: float
         ElPiGraph Lambda parameter
     cycle_epg_mu: float
-        ElPiGraph Mu parameter, specific for nodes that are part of cycles in the graph
+        ElPiGraph Mu parameter, specific for nodes that are part of cycles
     cycle_epg_lambda: float
-        ElPiGraph Lambda parameter, specific for nodes that are part of cycles in the graph
+        ElPiGraph Lambda parameter, specific for nodes that are part of cycles
     """
     # --- Init parameters, variables
     if epg_mu is None:
@@ -713,8 +719,9 @@ def early_groups(
     """
     Split data between source and target (with target a branching node)
     into n_windows slices along pseudotime.
-    Then try to guess which branch the data prior to the branching most resembles.
-    branch_nodes are adjacent to target and represent the separate groups / branches.
+    Then try to guess which branch the data prior
+    to the branching most resembles.
+    branch_nodes are adjacent to target and represent the separate branches.
     Labels are propagated back in pseudotime for each of the n_windows slices
     (e.g., from branch_nodes to slice[n_windows-1],
     then from slice[n_windows-1] to slice[n_windows-2],etc)
@@ -730,13 +737,15 @@ def early_groups(
     nodes_to_include: list[int]
         Nodes to include in the path between source and target
     flavor: str
-        How to propagate labels from branch_nodes to the previous pseudotime slice
-        "ot" for optimal transport
-        "ot_unbalanced" for unbalanced optimal transport
-        "ot_equal" for optimal transport with weight of each branch_nodes equalized
-        "knn" for simple nearest-neighbor search
+        How to propagate labels from branch_nodes
+        to the previous pseudotime slice
+            "ot" for optimal transport
+            "ot_unbalanced" for unbalanced OT
+            "ot_equal" for OT with weight of each branch_nodes equalized
+            "knn" for simple nearest-neighbor search
     n_windows: int
-        How many slices along pseudotime to make with data between source and target
+        How many slices along pseudotime to make
+        with data between source and target
     n_neighbors: int
         Number of nearest neighbors for flavor=
     ot_reg_e: float
