@@ -2,9 +2,9 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
+import scipy
 import statsmodels.api
 from sklearn.neighbors import KNeighborsRegressor
-
 
 from ._elpigraph import (
     learn_graph,
@@ -451,6 +451,37 @@ def ordinal_knn(
     return_sparse=False,
     stages=None,
 ):
+    """Supervised (ordinal) nearest-neighbor search.
+
+    Parameters
+    ----------
+    n_neighbors: int
+        Number of neighbors
+    n_natural: int
+        Number of natural neighbors (between 0 and n_neighbors-1)
+        to force the graph to retain. Tunes the strength of supervision
+    metric: str
+        One of sklearn's distance metrics
+    method : str (default='force')
+        if 'force', searches for each point at stage[i] n_neighbors nearest neighbors, forcing:
+            - n_neighbors/3 to be from stage[i-1]
+            - n_neighbors/3 to be from stage[i]
+            - n_neighbors/3 to be from stage[i+1]
+            For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
+
+        if 'guide', searches for each point at stage[i] n_neighbors nearest neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]}, without constraints on proportions
+    return_sparse: bool
+        Whether to return the graph in sparse form or as longform indices and distances
+    stages: list
+        Ordered list of ordinal label stages (low to high). If None, taken as np.unique(ordinal_label)
+
+    Returns
+    -------
+    Supervised nearest-neighbors as a graph in sparse form
+    or as longform indices and distances
+
+    """
 
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
         raise ValueError("Only one of `layer` and `obsm` can be used")
@@ -497,7 +528,38 @@ def smooth_ordinal_labels(
     method="guide",
     stages=None,
 ):
+    """Smooth ordinal labels into a continuous vector
 
+    Parameters
+    ----------
+    root: int
+        Index of chosen root data points
+    n_neighbors: int
+        Number of neighbors
+    n_natural: int
+        Number of natural neighbors (between 0 and n_neighbors-1)
+        to force the graph to retain. Tunes the strength of supervision
+    metric: str
+        One of sklearn's distance metrics
+    method : str (default='force')
+        if 'force', searches for each point at stage[i] n_neighbors nearest neighbors, forcing:
+            - n_neighbors/3 to be from stage[i-1]
+            - n_neighbors/3 to be from stage[i]
+            - n_neighbors/3 to be from stage[i+1]
+            For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
+
+        if 'guide', searches for each point at stage[i] n_neighbors nearest neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]}, without constraints on proportions
+    return_sparse: bool
+        Whether to return the graph in sparse form or as longform indices and distances
+    stages: list
+        Ordered list of ordinal label stages (low to high). If None, taken as np.unique(ordinal_label)
+
+    Returns
+    -------
+    adata.obs['ps']: smoothed ordinal labels
+
+    """
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
         raise ValueError("Only one of `layer` and `obsm` can be used")
     elif obsm is not None:
@@ -533,43 +595,60 @@ def refit_graph(
     adata,
     use_weights=False,
     shift_nodes_pos={},
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
-    key="epg",
+    epg_mu=None,
+    epg_lambda=None,
+    cycle_epg_mu=None,
+    cycle_epg_lambda=None,
 ):
+    """Refit graph to data
+
+    Parameters
+    ----------
+    use_weights: bool
+        Whether to weight points with adata.obs['pointweights']
+    shift_nodes_pos: dict
+        Optional dict to hold some nodes fixed at specified positions
+        e.g., {2:[.5,.2]} will hold node 2 at coordinates [.5,.2]
+    epg_mu: float
+        ElPiGraph Mu parameter
+    epg_lambda: float
+        ElPiGraph Lambda parameter
+    cycle_epg_mu: float
+        ElPiGraph Mu parameter, specific for nodes that are part of cycles in the graph
+    cycle_epg_lambda: float
+        ElPiGraph Lambda parameter, specific for nodes that are part of cycles in the graph
+    """
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns["epg"]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns["epg"]["params"]["epg_lambda"]
+    if cycle_epg_mu is None:
+        cycle_epg_mu = epg_mu
+    if cycle_epg_lambda is None:
+        cycle_epg_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
         weights = None
 
-    X = _get_graph_data(adata, key)
-    PG = stream2elpi(adata, key)
+    X = _get_graph_data(adata, "epg")
+    PG = stream2elpi(adata, "epg")
     elpigraph._graph_editing.refitGraph(
         X,
         PG=PG,
         shift_nodes_pos=shift_nodes_pos,
         PointWeights=weights,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=cycle_epg_mu,
+        cycle_Lambda=cycle_epg_lambda,
     )
 
-    adata.uns[key]["node_pos"] = PG["NodePositions"]
+    adata.uns["epg"]["node_pos"] = PG["NodePositions"]
 
     # update edge_len, conn, data projection
-    _store_graph_attributes(adata, X, key)
+    _store_graph_attributes(adata, X, "epg")
 
 
 def extend_leaves(
@@ -597,7 +676,25 @@ def extend_leaves(
 
     adata.uns[key]["node_pos"] = PG["NodePositions"]
     adata.uns[key]["edge"] = PG["Edges"][0]
-    _store_graph_attributes(adata, adata.obsm["X_dr"], key)
+    _store_graph_attributes(adata, X, key)
+
+
+def use_graph_with_n_nodes(adata, n_nodes):
+    """Use the graph at n_nodes.
+    This requires having run st2.tl.learn_graph with store_evolution=True
+    """
+
+    adata.uns["epg"]["node_pos"] = adata.uns["epg"]["graph_evolution"][
+        "all_node_pos"
+    ][n_nodes]
+    adata.uns["epg"]["edge"] = elpigraph.src.core.DecodeElasticMatrix2(
+        adata.uns["epg"]["graph_evolution"]["all_edge"][n_nodes]
+    )[0]
+    adata.uns["epg"]["conn"] = scipy.sparse.csr_matrix(
+        adata.uns["epg"]["graph_evolution"]["all_edge"][n_nodes]
+    )
+    X = _get_graph_data(adata, "epg")
+    _store_graph_attributes(adata, X, "epg")
 
 
 def early_groups(
@@ -613,7 +710,42 @@ def early_groups(
     ot_reg_m=0.001,
     key="epg",
 ):
+    """
+    Split data between source and target (with target a branching node)
+    into n_windows slices along pseudotime.
+    Then try to guess which branch the data prior to the branching most resembles.
+    branch_nodes are adjacent to target and represent the separate groups / branches.
+    Labels are propagated back in pseudotime for each of the n_windows slices
+    (e.g., from branch_nodes to slice[n_windows-1],
+    then from slice[n_windows-1] to slice[n_windows-2],etc)
 
+    Parameters
+    ----------
+    branch_nodes: list[int]
+        List of node labels adjacent to target branch node
+    source: int
+        Root node label
+    target: int
+        Branching node label
+    nodes_to_include: list[int]
+        Nodes to include in the path between source and target
+    flavor: str
+        How to propagate labels from branch_nodes to the previous pseudotime slice
+        "ot" for optimal transport
+        "ot_unbalanced" for unbalanced optimal transport
+        "ot_equal" for optimal transport with weight of each branch_nodes equalized
+        "knn" for simple nearest-neighbor search
+    n_windows: int
+        How many slices along pseudotime to make with data between source and target
+    n_neighbors: int
+        Number of nearest neighbors for flavor=
+    ot_reg_e: float
+        Unbalanced optimal transport entropic regularization parameter
+    ot_reg_m: float
+        Unbalanced optimal transport unbalanced parameter
+    key: str
+        Graph key
+    """
     X = _get_graph_data(adata, key)
     PG = stream2elpi(adata, key)
     elpigraph.utils.early_groups(
@@ -637,6 +769,7 @@ def early_groups(
     adata.obs[f"early_groups_{source}->{s}_clusters"] = PG[
         f"early_groups_{source}->{s}_clusters"
     ]
+
 
 def interpolate(
     adata,
