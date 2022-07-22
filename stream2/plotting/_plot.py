@@ -155,7 +155,7 @@ def hist(
     fig_ncol=3,
     save_fig=False,
     fig_path=None,
-    fig_name="plot_violin.pdf",
+    fig_name="plot_hist.pdf",
     **kwargs,
 ):
     """histogram plot."""
