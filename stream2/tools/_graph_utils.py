@@ -31,6 +31,8 @@ def find_paths(
     inplace=False,
     use_weights=False,
     use_partition=False,
+    epg_lambda=None,
+    epg_mu=None,
     key="epg",
 ):
     """This function tries to add extra paths to the graph by computing a
@@ -142,8 +144,8 @@ def find_paths(
             radius=radius,
             allow_same_branch=allow_same_branch,
             fit_loops=fit_loops,
-            Lambda=adata.uns[key]["params"]["epg_lambda"],
-            Mu=adata.uns[key]["params"]["epg_mu"],
+            epg_lambda=epg_lambda,
+            epg_mu=epg_mu,
             use_weights=use_weights,
             plot=plot,
             verbose=verbose,
@@ -163,8 +165,8 @@ def _find_paths(
     radius=None,
     allow_same_branch=True,
     fit_loops=True,
-    Lambda=0.02,
-    Mu=0.1,
+    epg_lambda=None,
+    epg_mu=None,
     use_weights=False,
     plot=False,
     verbose=True,
@@ -173,10 +175,6 @@ def _find_paths(
 ):
 
     # --- Init parameters, variables
-    X = _get_graph_data(adata, key)
-    init_nodes_pos = adata.uns[key]["node_pos"]
-    init_edges = adata.uns[key]["edge"]
-
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
@@ -186,20 +184,18 @@ def _find_paths(
     else:
         weights = None
 
+    X = _get_graph_data(adata, key)
+    PG = stream2elpi(adata, key)
     PG = elpigraph.findPaths(
         X,
-        dict(
-            NodePositions=init_nodes_pos,
-            Edges=[init_edges],
-            Lambda=Lambda,
-            Mu=Mu,
-        ),
+        PG,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
         min_path_len=min_path_len,
         nnodes=n_nodes,
         max_inner_fraction=max_inner_fraction,
         min_node_n_points=min_node_n_points,
         max_n_points=max_n_points,
-        # max_empty_curve_fraction=.2,
         min_compactness=min_compactness,
         radius=radius,
         allow_same_branch=allow_same_branch,
@@ -210,7 +206,6 @@ def _find_paths(
     )
 
     if PG is None:
-        print("Found no valid path to add")
         return
     if inplace:
         adata.uns[key]["node_pos"] = PG["addLoopsdict"]["merged_nodep"]
