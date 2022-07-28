@@ -33,6 +33,8 @@ def find_paths(
     use_partition=False,
     epg_lambda=None,
     epg_mu=None,
+    epg_cycle_lambda=None,
+    epg_cycle_mu=None,
     key="epg",
 ):
     """This function tries to add extra paths to the graph by computing a
@@ -146,6 +148,8 @@ def find_paths(
             fit_loops=fit_loops,
             epg_lambda=epg_lambda,
             epg_mu=epg_mu,
+            epg_cycle_lambda=epg_cycle_lambda,
+            epg_cycle_mu=epg_cycle_mu,
             use_weights=use_weights,
             plot=plot,
             verbose=verbose,
@@ -167,6 +171,8 @@ def _find_paths(
     fit_loops=True,
     epg_lambda=None,
     epg_mu=None,
+    epg_cycle_lambda=None,
+    epg_cycle_mu=None,
     use_weights=False,
     plot=False,
     verbose=True,
@@ -191,6 +197,8 @@ def _find_paths(
         PG,
         Mu=epg_mu,
         Lambda=epg_lambda,
+        cycle_Lambda=epg_cycle_lambda,
+        cycle_Mu=epg_cycle_mu,
         min_path_len=min_path_len,
         nnodes=n_nodes,
         max_inner_fraction=max_inner_fraction,
@@ -221,22 +229,22 @@ def add_path(
     n_nodes=None,
     use_weights=False,
     refit_graph=False,
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
+    epg_mu=None,
+    epg_lambda=None,
+    epg_cycle_mu=None,
+    epg_cycle_lambda=None,
     key="epg",
 ):
 
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns[key]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns[key]["params"]["epg_lambda"]
+    if epg_cycle_mu is None:
+        epg_cycle_mu = epg_mu
+    if epg_cycle_lambda is None:
+        epg_cycle_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
@@ -252,10 +260,10 @@ def add_path(
         n_nodes=n_nodes,
         weights=weights,
         refit_graph=refit_graph,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=epg_cycle_mu,
+        cycle_Lambda=epg_cycle_lambda,
     )
 
     adata.uns["epg"]["node_pos"] = PG["NodePositions"]
@@ -272,22 +280,22 @@ def del_path(
     nodes_to_include=None,
     use_weights=False,
     refit_graph=False,
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
+    epg_mu=None,
+    epg_lambda=None,
+    epg_cycle_mu=None,
+    epg_cycle_lambda=None,
     key="epg",
 ):
 
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns[key]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns[key]["params"]["epg_lambda"]
+    if epg_cycle_mu is None:
+        epg_cycle_mu = epg_mu
+    if epg_cycle_lambda is None:
+        epg_cycle_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
@@ -303,10 +311,10 @@ def del_path(
         nodes_to_include=nodes_to_include,
         weights=weights,
         refit_graph=refit_graph,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=epg_cycle_mu,
+        cycle_Lambda=epg_cycle_lambda,
     )
 
     adata.uns["epg"]["node_pos"] = PG["NodePositions"]
