@@ -848,8 +848,8 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
             ] = 1
 
     # allow unspecified clusters to connect to all other clusters
-    for l in labels_ignored:
-        adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 1
+    for x in labels_ignored:
+        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 1
 
     # remove forbidden connections given from paths_forbidden
     for p in paths_forbidden:
@@ -934,9 +934,9 @@ def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
             ] = 1
 
     # disallow unspecified clusters to connect to all other clusters
-    for l in labels_ignored:
-        adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 0
-        adjmat[num_labels[l], num_labels[l]] = 1
+    for x in labels_ignored:
+        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 0
+        adjmat[num_labels[x], num_labels[x]] = 1
 
     # remove forbidden connections given from paths_forbidden
     for p in paths_forbidden:
