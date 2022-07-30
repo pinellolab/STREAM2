@@ -721,11 +721,15 @@ def _store_graph_attributes(adata, mat, key):
         Edges=adata.uns[key]["edge"],
         Partition=node_id,
     )
+    edge_dist = np.linalg.norm(
+        mat - dict_proj['X_projected'],
+        axis=1)
 
     adata.obs[f"{key}_node_id"] = node_id.flatten()
     adata.obs[f"{key}_node_dist"] = node_dist
     adata.obs[f"{key}_edge_id"] = dict_proj["EdgeID"].astype(int)
     adata.obs[f"{key}_edge_loc"] = dict_proj["ProjectionValues"]
+    adata.obs[f"{key}_edge_dist"] = edge_dist
 
     # adata.obsm[f"X_{key}_proj"] = dict_proj["X_projected"]
 
