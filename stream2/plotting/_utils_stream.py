@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 import networkx as nx
+from copy import deepcopy
+import itertools
 
 
 def split_at_values(lst, values):
@@ -58,3 +60,29 @@ def _construct_stream_tree(adata, source=0, key="epg",):
         key=key)
     adata.uns['stream_tree']['edge'] = np.array(list_edge)
     adata.uns['stream_tree']['edge_len'] = np.array(list_edge_len)
+
+
+# modified depth first search
+def dfs_nodes_modified(tree, source, preference=None):
+    visited, stack = [], [source]
+    bfs_tree = nx.bfs_tree(tree, source=source)
+    while stack:
+        vertex = stack.pop()
+        if vertex not in visited:
+            visited.append(vertex)
+            unvisited = set(tree[vertex]) - set(visited)
+            if preference is not None:
+                weights = list()
+                for x in unvisited:
+                    successors = dict(
+                        nx.bfs_successors(bfs_tree, source=x))
+                    successors_nodes = list(
+                        itertools.chain.from_iterable(successors.values()))
+                    weights.append(
+                        min([preference.index(s)
+                             if s in preference else len(preference)
+                             for s in successors_nodes+[x]]))
+                unvisited = [x for _, x in sorted(
+                    zip(weights, unvisited), reverse=True, key=lambda x: x[0])]
+            stack.extend(unvisited)
+    return visited
