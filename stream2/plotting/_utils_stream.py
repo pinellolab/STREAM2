@@ -63,7 +63,8 @@ def _construct_stream_tree(adata, source=0, key="epg",):
 
 
 # modified depth first search
-def dfs_nodes_modified(tree, source, preference=None):
+def _dfs_nodes_modified(tree, source, preference=None):
+
     visited, stack = [], [source]
     bfs_tree = nx.bfs_tree(tree, source=source)
     while stack:
@@ -86,3 +87,43 @@ def dfs_nodes_modified(tree, source, preference=None):
                     zip(weights, unvisited), reverse=True, key=lambda x: x[0])]
             stack.extend(unvisited)
     return visited
+
+
+# calculate shifting distance for each branch
+def _calculate_shift_distance(
+        adata,
+        source=0,
+        dist_pctl=95,
+        preference=None
+):
+
+    stream_tree = nx.Graph()
+    stream_tree_edge = adata.uns['stream_tree']["edge"]
+    edges = list(zip(stream_tree_edge[:, 0], stream_tree_edge[:, 1]))
+    stream_tree.add_edges_from(edges)
+
+    dict_edge_shift_dist = dict()
+    # maximum distance from cells to branch
+    max_dist = np.percentile(adata.obs['epg_edge_dist'], dist_pctl)
+
+    leaves = [k for k, v in stream_tree.degree() if v == 1]
+    n_nonroot_leaves = len(list(set(leaves) - set([source])))
+    dict_bfs_pre = dict(nx.bfs_predecessors(stream_tree, source))
+    dict_bfs_suc = dict(nx.bfs_successors(stream_tree, source))
+    # depth first search
+    dfs_nodes = _dfs_nodes_modified(stream_tree, source, preference=preference)
+    dfs_nodes_copy = deepcopy(dfs_nodes)
+    id_leaf = 0
+    while len(dfs_nodes_copy) > 1:
+        node = dfs_nodes_copy.pop()
+        pre_node = dict_bfs_pre[node]
+        if node in leaves:
+            dict_edge_shift_dist[(pre_node, node)] = \
+                2*max_dist*(id_leaf-(n_nonroot_leaves/2.0))
+            id_leaf = id_leaf+1
+        else:
+            suc_nodes = dict_bfs_suc[node]
+            dict_edge_shift_dist[(pre_node, node)] = \
+                (sum([dict_edge_shift_dist[(node, sn)]
+                 for sn in suc_nodes]))/float(len(suc_nodes))
+    return dict_edge_shift_dist
