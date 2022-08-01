@@ -131,6 +131,18 @@ def _calculate_shift_distance(
     return dict_edge_shift_dist
 
 
+def _get_streamtree_id(adata):
+    """convert epg edge id to stream tree edge id."""
+    dict_epg_to_st = dict()
+    for i, x in enumerate(adata.uns['epg']['edge']):
+        for j, y in enumerate(adata.uns['stream_tree']['edge_nodes']):
+            if set(x) <= set(y):
+                dict_epg_to_st[i] = j
+                break
+    df_st = adata.obs['epg_edge_id'].map(dict_epg_to_st)
+    return df_st
+
+
 # def add_stream_sc_pos(
 #         adata,
 #         source=0,
