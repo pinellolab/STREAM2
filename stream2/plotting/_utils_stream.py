@@ -5,6 +5,7 @@ import pandas as pd
 import networkx as nx
 from copy import deepcopy
 import itertools
+from ..tools._pseudotime import infer_pseudotime
 
 
 def split_at_values(lst, values):
@@ -143,3 +144,82 @@ def _get_streamtree_id(adata):
                 break
     df_st = adata.obs['epg_edge_id'].map(dict_epg_to_st)
     return df_st
+
+
+def _add_stream_sc_pos(
+        adata,
+        source=0,
+        dist_scale=1,
+        dist_pctl=95,
+        preference=None,
+        key='epg'
+):
+
+    _construct_stream_tree(adata, source=source, key=key)
+    stream_tree = nx.Graph()
+    stream_tree_edge = adata.uns['stream_tree']["edge"]
+    stream_tree_edge_len = adata.uns['stream_tree']["edge_len"]
+    edges_weighted = list(zip(
+        stream_tree_edge[:, 0],
+        stream_tree_edge[:, 1],
+        stream_tree_edge_len))
+    stream_tree.add_weighted_edges_from(edges_weighted, weight='len')
+
+    dict_bfs_pre = dict(nx.bfs_predecessors(stream_tree, source))
+    dict_bfs_suc = dict(nx.bfs_successors(stream_tree, source))
+    dict_edge_shift_dist = \
+        _calculate_shift_distance(
+            adata, source=source,
+            dist_pctl=dist_pctl, preference=preference)
+    dict_path_len = nx.shortest_path_length(
+        stream_tree, source=source, weight='len')
+    df_st_id = _get_streamtree_id(adata)
+    pseudotime = infer_pseudotime(adata, source=source, copy=True)
+    df_cells_pos = pd.DataFrame(index=adata.obs.index, columns=['cell_pos'])
+    dict_edge_pos = {}
+    dict_node_pos = {}
+    adata.uns['stream_tree']['edge_pos'] = dict()
+    for i, edge in enumerate(stream_tree_edge):
+        node_pos_st = np.array(
+            [dict_path_len[edge[0]], dict_edge_shift_dist[tuple(edge)]])
+        node_pos_ed = np.array(
+            [dict_path_len[edge[1]], dict_edge_shift_dist[tuple(edge)]])
+        id_cells = np.where(df_st_id == i)[0]
+        cells_pos_x = pseudotime[id_cells]
+        np.random.seed(100)
+        cells_pos_y = node_pos_st[1] \
+            + dist_scale*adata.obs[f'{key}_edge_dist'].iloc[id_cells]\
+            * np.random.choice([1, -1], size=id_cells.shape[0])
+        cells_pos = np.array((cells_pos_x, cells_pos_y)).T
+        df_cells_pos.iloc[id_cells, 0] = \
+            [cells_pos[i, :].tolist() for i in range(cells_pos.shape[0])]
+        dict_edge_pos[tuple(edge)] = np.array([node_pos_st, node_pos_ed])
+        if(edge[0] not in dict_bfs_pre.keys()):
+            dict_node_pos[edge[0]] = node_pos_st
+        dict_node_pos[edge[1]] = node_pos_ed
+        edge_pos = dict_edge_pos[tuple(edge)]
+        if edge[0] in dict_bfs_pre.keys():
+            pre_node = dict_bfs_pre[edge[0]]
+            link_edge_pos = np.array(
+                [dict_edge_pos[(pre_node, edge[0])][1, ],
+                 dict_edge_pos[tuple(edge)][0, ]])
+            edge_pos = np.vstack((link_edge_pos, edge_pos))
+        adata.uns['stream_tree']['edge_pos'][tuple(edge)] = edge_pos
+
+    adata.uns['stream_tree']['cell_pos'] = \
+        np.array(df_cells_pos['cell_pos'].tolist())
+
+    if stream_tree.degree(source) > 1:
+        suc_nodes = dict_bfs_suc[source]
+        edges = [(source, sn) for sn in suc_nodes]
+        edges_y_pos = [dict_edge_pos[tuple(x)][0, 1] for x in edges]
+        max_y_pos = max(edges_y_pos)
+        min_y_pos = min(edges_y_pos)
+        median_y_pos = np.median(edges_y_pos)
+        x_pos = dict_edge_pos[edges[0]][0, 0]
+        dict_node_pos[source] = np.array([x_pos, median_y_pos])
+        link_edge_pos = np.array([[x_pos, min_y_pos], [x_pos, max_y_pos]])
+        adata.uns['stream_tree']['edge_pos'][(source, source)] = link_edge_pos
+
+    adata.uns['stream_tree']['node_pos'] = \
+        np.array([dict_node_pos[x] for x in adata.uns['stream_tree']['node']])

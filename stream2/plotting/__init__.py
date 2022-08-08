@@ -10,3 +10,7 @@ from ._plot import (
     graph,
     plot_features_in_pseudotime,
 )
+
+from ._utils_stream import (
+    _add_stream_sc_pos
+)
