@@ -60,6 +60,8 @@ def _construct_stream_tree(adata, source=0, key="epg",):
     adata.uns['stream_tree']['params'] = dict(
         source=source,
         key=key)
+    adata.uns['stream_tree']['node'] = \
+        np.unique(list(itertools.chain(*list_edge)))
     adata.uns['stream_tree']['edge'] = np.array(list_edge)
     adata.uns['stream_tree']['edge_len'] = np.array(list_edge_len)
     adata.uns['stream_tree']['edge_nodes'] = pd.Series(list_edge_nodes)

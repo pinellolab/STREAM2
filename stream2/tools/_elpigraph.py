@@ -315,6 +315,7 @@ def _learn_graph(
 
     adata.uns["epg"] = dict()
 
+    adata.uns["epg"]["node"] = np.arange(n_nodes)
     adata.uns["epg"]["node_pos"] = dict_epg["NodePositions"]
     adata.uns["epg"]["edge"] = dict_epg["Edges"][0]
     adata.uns["epg"]["params"] = {
