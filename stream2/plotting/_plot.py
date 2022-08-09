@@ -20,6 +20,9 @@ import statsmodels.api as sm
 from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
+from ._utils_stream import (
+    _add_stream_sc_pos,
+    _arrowed_spines)
 
 lowess = sm.nonparametric.lowess
 
