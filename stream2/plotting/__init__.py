@@ -9,8 +9,5 @@ from ._plot import (
     dimension_reduction,
     graph,
     plot_features_in_pseudotime,
-)
-
-from ._utils_stream import (
-    _add_stream_sc_pos
+    stream_sc
 )

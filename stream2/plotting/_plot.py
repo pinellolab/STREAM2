@@ -17,6 +17,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm
+from slugify import slugify
+
 from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
@@ -1266,3 +1268,302 @@ def plot_features_in_pseudotime(
     )
     fig.update_traces(marker=dict(size=3))
     return fig
+
+
+def stream_sc(
+    adata,
+    source=0,
+    color=None,
+    dist_scale=1,
+    dist_pctl=95,
+    preference=None,
+    fig_size=(7, 4.5),
+    fig_legend_ncol=1,
+    fig_legend_order=None,
+    vmin=None,
+    vmax=None,
+    alpha=0.8,
+    pad=1.08,
+    w_pad=None,
+    h_pad=None,
+    show_text=True,
+    show_graph=True,
+    save_fig=False,
+    fig_path=None,
+    fig_format='png',
+    plotly=False
+):
+    """Generate stream plot at single cell level (aka, subway map plots)
+
+    Parameters
+    ----------
+    adata: AnnData
+        Annotated data matrix.
+    root: `str`, optional (default: 'S0'):
+        The starting node
+    color: `list` optional (default: None)
+        Column names of observations (adata.obs.columns) or
+        variable names(adata.var_names). A list of names to be plotted.
+    dist_scale: `float`,optional (default: 1)
+        Scaling factor to scale the distance from cells to tree branches
+        (by default, it keeps the same distance as in original manifold)
+    dist_pctl: `int`, optional (default: 95)
+        Percentile of cells' distances from branches (between 0 and 100)
+        used for calculating the distances between branches.
+    preference: `list`, optional (default: None):
+        The preference of nodes. The branch with speficied nodes
+        are prioritized and put on the top part of stream plot.
+        The higher ranks the node have,
+        the closer to the top the branch with the node is.
+    fig_size: `tuple`, optional (default: (7,4.5))
+        figure size.
+    fig_legend_order: `dict`,optional (default: None)
+        Specified order for the appearance of the annotation keys.Only valid for ategorical variable  
+        e.g. fig_legend_order = {'ann1':['a','b','c'],'ann2':['aa','bb','cc']}
+    fig_legend_ncol: `int`, optional (default: 1)
+        The number of columns that the legend has.
+    vmin,vmax: `float`, optional (default: None)
+        The min and max values are used to normalize continuous values. If None, the respective min and max of continuous values is used.
+    alpha: `float`, optional (default: 0.8)
+        0.0 transparent through 1.0 opaque
+    pad: `float`, optional (default: 1.08)
+        Padding between the figure edge and the edges of subplots, as a fraction of the font size.
+    h_pad, w_pad: `float`, optional (default: None)
+        Padding (height/width) between edges of adjacent subplots, as a fraction of the font size. Defaults to pad.
+    show_text: `bool`, optional (default: False)
+        If True, node state label will be shown
+    show_graph: `bool`, optional (default: False)
+        If True, the learnt principal graph will be shown
+    save_fig: `bool`, optional (default: False)
+        if True,save the figure.
+    fig_path: `str`, optional (default: None)
+        if save_fig is True, specify figure path. if None, adata.uns['workdir'] will be used.
+    fig_format: `str`, optional (default: 'pdf')
+        if save_fig is True, specify figure format.
+    plotly: `bool`, optional (default: False)
+        if True, plotly will be used to make interactive plots
+
+    Returns
+    -------
+    updates `adata` with the following fields.
+    X_stream_root: `numpy.ndarray` (`adata.obsm['X_stream_root']`)
+        Store #observations × 2 coordinates of cells in subwaymap plot.
+    stream_root: `dict` (`adata.uns['stream_root']`)
+        Store the coordinates of nodes ('nodes') and edges ('edges') in subwaymap plot.
+    """
+
+    if fig_size is None:
+        fig_size = mpl.rcParams["figure.figsize"]
+    if save_fig is None:
+        save_fig = settings.save_fig
+    if fig_path is None:
+        fig_path = os.path.join(settings.workdir, "figures")
+
+    if color is None:
+        color = ['label']
+    # remove duplicate keys
+    color = list(dict.fromkeys(color))
+
+    dict_ann = dict()
+    for ann in color:
+        if ann in adata.obs.columns:
+            dict_ann[ann] = adata.obs[ann]
+        elif ann in adata.var_names:
+            dict_ann[ann] = adata.obs_vector(ann)
+        else:
+            raise ValueError(
+                f"could not find {ann} in "
+                "`adata.obs.columns` and `adata.var_names`")
+
+    _add_stream_sc_pos(
+        adata,
+        source=source,
+        dist_scale=dist_scale,
+        dist_pctl=dist_pctl,
+        preference=preference
+    )
+    stream_node = adata.uns['stream_tree']['node']
+    stream_node_pos = adata.uns['stream_tree']['node_pos']
+    stream_edge_pos = adata.uns['stream_tree']['edge_pos']
+
+    df_plot = pd.DataFrame(
+        index=adata.obs.index,
+        data=adata.uns['stream_tree']['cell_pos'],
+        columns=['pseudotime', 'dist'])
+    for ann in color:
+        df_plot[ann] = dict_ann[ann].astype(str)
+    df_plot_shuf = df_plot.sample(frac=1, random_state=100)
+
+    legend_order = {
+        ann: np.unique(df_plot_shuf[ann])
+        for ann in color if is_string_dtype(df_plot_shuf[ann])}
+    if fig_legend_order is not None:
+        if not isinstance(fig_legend_order, dict):
+            raise TypeError("`fig_legend_order` must be a dictionary")
+        for ann in fig_legend_order.keys():
+            if ann in legend_order.keys():
+                legend_order[ann] = fig_legend_order[ann]
+            else:
+                print(f"{ann} is ignored for ordering legend labels"
+                      "due to incorrect name or data type")
+
+    if plotly:
+        for ann in color:
+            fig = px.scatter(
+                df_plot_shuf,
+                x='pseudotime',
+                y='dist',
+                color=ann,
+                opacity=alpha,
+                color_continuous_scale=px.colors.sequential.Viridis,
+                color_discrete_map=adata.uns[ann+'_color']
+                if ann+'_color' in adata.uns_keys() else {})
+            if show_graph:
+                for edge_i in stream_edge_pos.keys():
+                    branch_i_pos = stream_edge_pos[edge_i]
+                    branch_i = pd.DataFrame(
+                        branch_i_pos, columns=range(branch_i_pos.shape[1]))
+                    for ii in np.arange(
+                            start=0, stop=branch_i.shape[0], step=2):
+                        if branch_i.iloc[ii, 0] == branch_i.iloc[ii+1, 0]:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=branch_i.iloc[[ii, ii+1], 0],
+                                    y=branch_i.iloc[[ii, ii+1], 1],
+                                    mode='lines',
+                                    opacity=0.8,
+                                    line=dict(color='#767070', width=3),
+                                    showlegend=False))
+                        else:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=branch_i.iloc[[ii, ii+1], 0],
+                                    y=branch_i.iloc[[ii, ii+1], 1],
+                                    mode='lines',
+                                    line=dict(color='black', width=3),
+                                    showlegend=False))
+            if show_text:
+                fig.add_trace(
+                    go.Scatter(
+                        x=stream_node_pos[:, 0],
+                        y=stream_node_pos[:, 1],
+                        mode='text',
+                        opacity=1,
+                        marker=dict(size=1.5*mpl.rcParams['lines.markersize'],color='#767070'),
+                        text=stream_node,
+                        textposition="bottom center",
+                        name='states',
+                        showlegend=False),)
+            fig.update_layout(
+                legend={'itemsizing': 'constant'},
+                xaxis={'showgrid': False, 'zeroline': False},
+                yaxis={'visible': False},
+                width=800,
+                height=500)
+            fig.show(renderer="notebook")
+    else:
+        for i, ann in enumerate(color):
+            fig = plt.figure(figsize=(fig_size[0], fig_size[1]))
+            ax_i = fig.add_subplot(1, 1, 1)
+            if is_string_dtype(df_plot[ann]):
+                sc_i = sns.scatterplot(
+                    ax=ax_i,
+                    x='pseudotime',
+                    y='dist',
+                    hue=ann,
+                    hue_order=legend_order[ann],
+                    data=df_plot_shuf,
+                    alpha=alpha,
+                    linewidth=0,
+                    palette=adata.uns[ann+'_color']
+                    if (ann+'_color' in adata.uns_keys()) and
+                    (set(adata.uns[ann+'_color'].keys())
+                     >= set(np.unique(df_plot_shuf[ann]))) else None)
+                legend_handles, legend_labels = \
+                    ax_i.get_legend_handles_labels()
+                ax_i.legend(
+                    handles=legend_handles,
+                    labels=legend_labels,
+                    bbox_to_anchor=(1, 0.5),
+                    loc='center left',
+                    ncol=fig_legend_ncol,
+                    frameon=False)
+                if ann+'_color' not in adata.uns_keys():
+                    colors_sns = sc_i.get_children()[0].get_facecolors()
+                    colors_sns_scaled = (255*colors_sns).astype(int)
+                    adata.uns[ann+'_color'] = {
+                        df_plot_shuf[ann][i]: '#%02x%02x%02x' %
+                        (colors_sns_scaled[i][0],
+                         colors_sns_scaled[i][1],
+                         colors_sns_scaled[i][2])
+                        for i in np.unique(
+                            df_plot_shuf[ann], return_index=True)[1]}
+                # remove legend title
+                # ax_i.get_legend().texts[0].set_text("")
+            else:
+                vmin_i = df_plot[ann].min() if vmin is None else vmin
+                vmax_i = df_plot[ann].max() if vmax is None else vmax
+                sc_i = ax_i.scatter(
+                    df_plot_shuf['pseudotime'],
+                    df_plot_shuf['dist'],
+                    c=df_plot_shuf[ann],
+                    vmin=vmin_i,
+                    vmax=vmax_i,
+                    alpha=alpha)
+                cbar = plt.colorbar(
+                    sc_i, ax=ax_i, pad=0.01, fraction=0.05, aspect=40)
+                cbar.solids.set_edgecolor("face")
+                cbar.ax.locator_params(nbins=5)
+            if show_graph:
+                for edge_i in stream_edge_pos.keys():
+                    branch_i_pos = stream_edge_pos[edge_i]
+                    branch_i = pd.DataFrame(
+                        branch_i_pos, columns=range(branch_i_pos.shape[1]))
+                    for ii in np.arange(
+                            start=0, stop=branch_i.shape[0], step=2):
+                        if branch_i.iloc[ii, 0] == branch_i.iloc[ii+1, 0]:
+                            ax_i.plot(
+                                branch_i.iloc[[ii, ii+1], 0],
+                                branch_i.iloc[[ii, ii+1], 1],
+                                c='#767070',
+                                alpha=0.8)
+                        else:
+                            ax_i.plot(
+                                branch_i.iloc[[ii, ii+1], 0],
+                                branch_i.iloc[[ii, ii+1], 1],
+                                c='black',
+                                alpha=1)
+            if show_text:
+                for i, node_i in enumerate(stream_node):
+                    ax_i.text(
+                        stream_node_pos[i, 0],
+                        stream_node_pos[i, 1],
+                        node_i,
+                        color='black',
+                        fontsize=0.9*mpl.rcParams['font.size'],
+                        ha='left',
+                        va='bottom')
+            ax_i.set_xlabel("pseudotime", labelpad=2)
+            ax_i.spines['left'].set_visible(False) 
+            ax_i.spines['right'].set_visible(False)
+            ax_i.spines['top'].set_visible(False) 
+            ax_i.get_yaxis().set_visible(False)
+            ax_i.locator_params(axis='x', nbins=8)
+            ax_i.tick_params(axis="x", pad=-1)
+            _ = _arrowed_spines(
+                ax_i,
+                locations=('bottom right',),
+                lw=ax_i.spines['bottom'].get_linewidth()*1e-5)
+            ax_i.set_title(ann)
+            plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
+            if save_fig:
+                file_path_S = os.path.join(fig_path, source)
+                if(not os.path.exists(file_path_S)):
+                    os.makedirs(file_path_S)
+                plt.savefig(
+                    os.path.join(
+                        file_path_S,
+                        'stream_sc_' + slugify(ann) + '.' + fig_format),
+                    pad_inches=1,
+                    bbox_inches='tight')
+                plt.close(fig)
