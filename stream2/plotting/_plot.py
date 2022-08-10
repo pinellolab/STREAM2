@@ -6,6 +6,7 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from mpl_toolkits.axisartist.axislines import AxesZero
 from pandas.core.dtypes.common import is_numeric_dtype
 import seaborn as sns
 from adjustText import adjust_text
@@ -23,8 +24,7 @@ from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
 from ._utils_stream import (
-    _add_stream_sc_pos,
-    _arrowed_spines)
+    _add_stream_sc_pos)
 
 lowess = sm.nonparametric.lowess
 
@@ -456,6 +456,9 @@ def _scatterplot2d(
     pad=1.08,
     w_pad=None,
     h_pad=None,
+    cbar_pad=0.01,
+    cbar_fraction=0.05,
+    cbar_aspect=40,
     save_fig=None,
     fig_path=None,
     fig_name="scatterplot2d.pdf",
@@ -631,7 +634,11 @@ def _scatterplot2d(
                     s=size,
                 )
                 cbar = plt.colorbar(
-                    sc_i, ax=ax_i, pad=0.01, fraction=0.05, aspect=40
+                    sc_i,
+                    ax=ax_i,
+                    pad=cbar_pad,
+                    fraction=cbar_fraction,
+                    aspect=cbar_aspect
                 )
                 cbar.solids.set_edgecolor("face")
                 cbar.ax.locator_params(nbins=5)
@@ -813,6 +820,9 @@ def dimension_reduction(
     pad=1.08,
     w_pad=None,
     h_pad=None,
+    cbar_pad=0.01,
+    cbar_fraction=0.05,
+    cbar_aspect=40,
     save_fig=None,
     fig_path=None,
     fig_name="scatterplot2d.pdf",
@@ -1000,6 +1010,9 @@ def dimension_reduction(
                 pad=pad,
                 w_pad=w_pad,
                 h_pad=h_pad,
+                cbar_pad=cbar_pad,
+                cbar_fraction=cbar_fraction,
+                cbar_aspect=cbar_aspect,
                 save_fig=save_fig,
                 fig_path=fig_path,
                 fig_name=fig_name,
@@ -1274,10 +1287,15 @@ def stream_sc(
     adata,
     source=0,
     color=None,
+    dict_palette=None,
     dist_scale=1,
     dist_pctl=95,
+    size=8,
+    drawing_order="sorted",
+    dict_drawing_order=None,
     preference=None,
     fig_size=(7, 4.5),
+    fig_ncol=1,
     fig_legend_ncol=1,
     fig_legend_order=None,
     vmin=None,
@@ -1286,12 +1304,15 @@ def stream_sc(
     pad=1.08,
     w_pad=None,
     h_pad=None,
+    cbar_pad=0.04,
+    cbar_fraction=0.05,
+    cbar_aspect=40,
     show_text=True,
     show_graph=True,
     save_fig=False,
     fig_path=None,
-    fig_format='png',
-    plotly=False
+    fig_name='plot_stream_sc.png',
+    **kwargs
 ):
     """Generate stream plot at single cell level (aka, subway map plots)
 
@@ -1359,21 +1380,8 @@ def stream_sc(
     if fig_path is None:
         fig_path = os.path.join(settings.workdir, "figures")
 
-    if color is None:
-        color = ['label']
-    # remove duplicate keys
-    color = list(dict.fromkeys(color))
-
-    dict_ann = dict()
-    for ann in color:
-        if ann in adata.obs.columns:
-            dict_ann[ann] = adata.obs[ann]
-        elif ann in adata.var_names:
-            dict_ann[ann] = adata.obs_vector(ann)
-        else:
-            raise ValueError(
-                f"could not find {ann} in "
-                "`adata.obs.columns` and `adata.var_names`")
+    if dict_palette is None:
+        dict_palette = dict()
 
     _add_stream_sc_pos(
         adata,
@@ -1390,180 +1398,139 @@ def stream_sc(
         index=adata.obs.index,
         data=adata.uns['stream_tree']['cell_pos'],
         columns=['pseudotime', 'dist'])
-    for ann in color:
-        df_plot[ann] = dict_ann[ann].astype(str)
-    df_plot_shuf = df_plot.sample(frac=1, random_state=100)
 
-    legend_order = {
-        ann: np.unique(df_plot_shuf[ann])
-        for ann in color if is_string_dtype(df_plot_shuf[ann])}
-    if fig_legend_order is not None:
-        if not isinstance(fig_legend_order, dict):
-            raise TypeError("`fig_legend_order` must be a dictionary")
-        for ann in fig_legend_order.keys():
-            if ann in legend_order.keys():
-                legend_order[ann] = fig_legend_order[ann]
-            else:
-                print(f"{ann} is ignored for ordering legend labels"
-                      "due to incorrect name or data type")
-
-    if plotly:
-        for ann in color:
-            fig = px.scatter(
-                df_plot_shuf,
-                x='pseudotime',
-                y='dist',
-                color=ann,
-                opacity=alpha,
-                color_continuous_scale=px.colors.sequential.Viridis,
-                color_discrete_map=adata.uns[ann+'_color']
-                if ann+'_color' in adata.uns_keys() else {})
-            if show_graph:
-                for edge_i in stream_edge_pos.keys():
-                    branch_i_pos = stream_edge_pos[edge_i]
-                    branch_i = pd.DataFrame(
-                        branch_i_pos, columns=range(branch_i_pos.shape[1]))
-                    for ii in np.arange(
-                            start=0, stop=branch_i.shape[0], step=2):
-                        if branch_i.iloc[ii, 0] == branch_i.iloc[ii+1, 0]:
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=branch_i.iloc[[ii, ii+1], 0],
-                                    y=branch_i.iloc[[ii, ii+1], 1],
-                                    mode='lines',
-                                    opacity=0.8,
-                                    line=dict(color='#767070', width=3),
-                                    showlegend=False))
-                        else:
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=branch_i.iloc[[ii, ii+1], 0],
-                                    y=branch_i.iloc[[ii, ii+1], 1],
-                                    mode='lines',
-                                    line=dict(color='black', width=3),
-                                    showlegend=False))
-            if show_text:
-                fig.add_trace(
-                    go.Scatter(
-                        x=stream_node_pos[:, 0],
-                        y=stream_node_pos[:, 1],
-                        mode='text',
-                        opacity=1,
-                        marker=dict(size=1.5*mpl.rcParams['lines.markersize'],color='#767070'),
-                        text=stream_node,
-                        textposition="bottom center",
-                        name='states',
-                        showlegend=False),)
-            fig.update_layout(
-                legend={'itemsizing': 'constant'},
-                xaxis={'showgrid': False, 'zeroline': False},
-                yaxis={'visible': False},
-                width=800,
-                height=500)
-            fig.show(renderer="notebook")
-    else:
-        for i, ann in enumerate(color):
-            fig = plt.figure(figsize=(fig_size[0], fig_size[1]))
-            ax_i = fig.add_subplot(1, 1, 1)
-            if is_string_dtype(df_plot[ann]):
-                sc_i = sns.scatterplot(
-                    ax=ax_i,
-                    x='pseudotime',
-                    y='dist',
-                    hue=ann,
-                    hue_order=legend_order[ann],
-                    data=df_plot_shuf,
+    if color is None:
+        list_ax = _scatterplot2d(
+                    df_plot,
+                    x="pseudotime",
+                    y="dist",
+                    drawing_order=drawing_order,
+                    size=size,
+                    fig_size=fig_size,
                     alpha=alpha,
-                    linewidth=0,
-                    palette=adata.uns[ann+'_color']
-                    if (ann+'_color' in adata.uns_keys()) and
-                    (set(adata.uns[ann+'_color'].keys())
-                     >= set(np.unique(df_plot_shuf[ann]))) else None)
-                legend_handles, legend_labels = \
-                    ax_i.get_legend_handles_labels()
-                ax_i.legend(
-                    handles=legend_handles,
-                    labels=legend_labels,
-                    bbox_to_anchor=(1, 0.5),
-                    loc='center left',
-                    ncol=fig_legend_ncol,
-                    frameon=False)
-                if ann+'_color' not in adata.uns_keys():
-                    colors_sns = sc_i.get_children()[0].get_facecolors()
-                    colors_sns_scaled = (255*colors_sns).astype(int)
-                    adata.uns[ann+'_color'] = {
-                        df_plot_shuf[ann][i]: '#%02x%02x%02x' %
-                        (colors_sns_scaled[i][0],
-                         colors_sns_scaled[i][1],
-                         colors_sns_scaled[i][2])
-                        for i in np.unique(
-                            df_plot_shuf[ann], return_index=True)[1]}
-                # remove legend title
-                # ax_i.get_legend().texts[0].set_text("")
-            else:
-                vmin_i = df_plot[ann].min() if vmin is None else vmin
-                vmax_i = df_plot[ann].max() if vmax is None else vmax
-                sc_i = ax_i.scatter(
-                    df_plot_shuf['pseudotime'],
-                    df_plot_shuf['dist'],
-                    c=df_plot_shuf[ann],
-                    vmin=vmin_i,
-                    vmax=vmax_i,
-                    alpha=alpha)
-                cbar = plt.colorbar(
-                    sc_i, ax=ax_i, pad=0.01, fraction=0.05, aspect=40)
-                cbar.solids.set_edgecolor("face")
-                cbar.ax.locator_params(nbins=5)
-            if show_graph:
-                for edge_i in stream_edge_pos.keys():
-                    branch_i_pos = stream_edge_pos[edge_i]
-                    branch_i = pd.DataFrame(
-                        branch_i_pos, columns=range(branch_i_pos.shape[1]))
-                    for ii in np.arange(
-                            start=0, stop=branch_i.shape[0], step=2):
-                        if branch_i.iloc[ii, 0] == branch_i.iloc[ii+1, 0]:
-                            ax_i.plot(
-                                branch_i.iloc[[ii, ii+1], 0],
-                                branch_i.iloc[[ii, ii+1], 1],
-                                c='#767070',
-                                alpha=0.8)
+                    pad=pad,
+                    w_pad=w_pad,
+                    h_pad=h_pad,
+                    save_fig=False,
+                    copy=True,
+                    **kwargs,
+        )
+    else:
+        color = list(dict.fromkeys(color))  # remove duplicate keys
+        for ann in color:
+            if ann in adata.obs_keys():
+                df_plot[ann] = adata.obs[ann]
+                if not is_numeric_dtype(df_plot[ann]):
+                    if "color" not in adata.uns.keys():
+                        adata.uns["color"] = dict()
+
+                    if ann not in dict_palette.keys():
+                        if (
+                            ann + "_color" in adata.uns["color"].keys()
+                        ) and all(
+                            np.isin(
+                                np.unique(df_plot[ann]),
+                                list(
+                                    adata.uns["color"][ann + "_color"].keys()
+                                ),
+                            )
+                        ):
+                            dict_palette[ann] = adata.uns["color"][
+                                ann + "_color"
+                            ]
                         else:
-                            ax_i.plot(
-                                branch_i.iloc[[ii, ii+1], 0],
-                                branch_i.iloc[[ii, ii+1], 1],
-                                c='black',
-                                alpha=1)
-            if show_text:
-                for i, node_i in enumerate(stream_node):
-                    ax_i.text(
-                        stream_node_pos[i, 0],
-                        stream_node_pos[i, 1],
-                        node_i,
-                        color='black',
-                        fontsize=0.9*mpl.rcParams['font.size'],
-                        ha='left',
-                        va='bottom')
-            ax_i.set_xlabel("pseudotime", labelpad=2)
-            ax_i.spines['left'].set_visible(False) 
-            ax_i.spines['right'].set_visible(False)
-            ax_i.spines['top'].set_visible(False) 
-            ax_i.get_yaxis().set_visible(False)
-            ax_i.locator_params(axis='x', nbins=8)
-            ax_i.tick_params(axis="x", pad=-1)
-            _ = _arrowed_spines(
-                ax_i,
-                locations=('bottom right',),
-                lw=ax_i.spines['bottom'].get_linewidth()*1e-5)
-            ax_i.set_title(ann)
-            plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
-            if save_fig:
-                file_path_S = os.path.join(fig_path, source)
-                if(not os.path.exists(file_path_S)):
-                    os.makedirs(file_path_S)
-                plt.savefig(
-                    os.path.join(
-                        file_path_S,
-                        'stream_sc_' + slugify(ann) + '.' + fig_format),
-                    pad_inches=1,
-                    bbox_inches='tight')
-                plt.close(fig)
+                            dict_palette[ann] = generate_palette(
+                                adata.obs[ann]
+                            )
+                            adata.uns["color"][ann + "_color"] = dict_palette[
+                                ann
+                            ].copy()
+                    else:
+                        if ann + "_color" not in adata.uns["color"].keys():
+                            adata.uns["color"][ann + "_color"] = dict_palette[
+                                ann
+                            ].copy()
+
+            elif ann in adata.var_names:
+                df_plot[ann] = adata.obs_vector(ann)
+            else:
+                raise ValueError(
+                    f"could not find {ann} in `adata.obs.columns`"
+                    " and `adata.var_names`"
+                )
+        list_ax = _scatterplot2d(
+                    df_plot,
+                    x="pseudotime",
+                    y="dist",
+                    list_hue=color,
+                    hue_palette=dict_palette,
+                    drawing_order=drawing_order,
+                    dict_drawing_order=dict_drawing_order,
+                    size=size,
+                    fig_size=fig_size,
+                    fig_ncol=fig_ncol,
+                    fig_legend_ncol=fig_legend_ncol,
+                    fig_legend_order=fig_legend_order,
+                    vmin=vmin,
+                    vmax=vmax,
+                    alpha=alpha,
+                    pad=pad,
+                    w_pad=w_pad,
+                    h_pad=h_pad,
+                    cbar_pad=cbar_pad,
+                    cbar_fraction=cbar_fraction,
+                    cbar_aspect=cbar_aspect,
+                    save_fig=False,
+                    copy=True,
+                    **kwargs,
+        )
+    for ax_i in list_ax:
+        ax_i.set_xlabel("pseudotime", labelpad=2)
+        ax_i.spines['left'].set_visible(False) 
+        ax_i.spines['right'].set_visible(False)
+        ax_i.spines['top'].set_visible(False) 
+        ax_i.get_yaxis().set_visible(False)
+        ax_i.locator_params(axis='x', nbins=8)
+        ax_i.tick_params(axis="x", pad=-1)
+        ax_i.plot((1), (0), ls="", marker=">", ms=10, color="k", 
+                transform=ax_i.transAxes, clip_on=False)
+    if show_graph:
+        for ax_i in list_ax:
+            for edge_i in stream_edge_pos.keys():
+                branch_i_pos = stream_edge_pos[edge_i]
+                branch_i = pd.DataFrame(
+                    branch_i_pos, columns=range(branch_i_pos.shape[1]))
+                for ii in np.arange(
+                        start=0, stop=branch_i.shape[0], step=2):
+                    if branch_i.iloc[ii, 0] == branch_i.iloc[ii+1, 0]:
+                        ax_i.plot(
+                            branch_i.iloc[[ii, ii+1], 0],
+                            branch_i.iloc[[ii, ii+1], 1],
+                            c='#767070',
+                            alpha=0.8)
+                    else:
+                        ax_i.plot(
+                            branch_i.iloc[[ii, ii+1], 0],
+                            branch_i.iloc[[ii, ii+1], 1],
+                            c='black',
+                            alpha=1)
+    if show_text:
+        for ax_i in list_ax:
+            for i, node_i in enumerate(stream_node):
+                ax_i.text(
+                    stream_node_pos[i, 0],
+                    stream_node_pos[i, 1],
+                    node_i,
+                    color='black',
+                    fontsize=0.9*mpl.rcParams['font.size'],
+                    ha='left',
+                    va='bottom')
+    if save_fig:
+        if not os.path.exists(fig_path):
+            os.makedirs(fig_path)
+        plt.savefig(
+            os.path.join(fig_path, fig_name),
+            pad_inches=1,
+            bbox_inches="tight",
+        )
+        plt.close()
