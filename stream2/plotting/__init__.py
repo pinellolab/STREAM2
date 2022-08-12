@@ -11,3 +11,11 @@ from ._plot import (
     plot_features_in_pseudotime,
     stream_sc
 )
+
+from ._utils_stream import (
+    _construct_stream_tree,
+    _dfs_edges_modified,
+    _get_streamtree_edge_id,
+    _cal_stream_polygon_string,
+    _add_stream_sc_pos
+)

@@ -2,6 +2,10 @@
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import (
+    is_string_dtype,
+    is_numeric_dtype
+)
 import networkx as nx
 from copy import deepcopy
 import itertools
@@ -71,7 +75,7 @@ def _construct_stream_tree(adata, source=0, key="epg",):
     adata.uns['stream_tree']['edge_nodes'] = pd.Series(list_edge_nodes)
 
 
-# modified depth first search
+# modified depth first search for nodes
 def _dfs_nodes_modified(tree, source, preference=None):
 
     visited, stack = [], [source]
@@ -96,6 +100,36 @@ def _dfs_nodes_modified(tree, source, preference=None):
                     zip(weights, unvisited), reverse=True, key=lambda x: x[0])]
             stack.extend(unvisited)
     return visited
+
+
+# modified depth first search for edges
+def _dfs_edges_modified(tree, source, preference=None):
+    visited, queue = [], [source]
+    bfs_tree = nx.bfs_tree(tree, source=source)
+    predecessors = dict(nx.bfs_predecessors(bfs_tree, source))
+    edges = []
+    while queue:
+        vertex = queue.pop()
+        if vertex not in visited:
+            visited.append(vertex)
+            if vertex in predecessors.keys():
+                edges.append((predecessors[vertex], vertex))
+            unvisited = set(tree[vertex]) - set(visited)
+            if preference is not None:
+                weights = list()
+                for x in unvisited:
+                    successors = dict(
+                        nx.bfs_successors(bfs_tree, source=x))
+                    successors_nodes = list(
+                        itertools.chain.from_iterable(successors.values()))
+                    weights.append(
+                        min([preference.index(s)
+                             if s in preference else len(preference)
+                             for s in successors_nodes+[x]]))
+                unvisited = [x for _, x in sorted(
+                    zip(weights, unvisited), reverse=True, key=lambda x: x[0])]
+            queue.extend(unvisited)
+    return edges
 
 
 def _calculate_shift_distance(
@@ -137,7 +171,7 @@ def _calculate_shift_distance(
     return dict_edge_shift_dist
 
 
-def _get_streamtree_id(adata):
+def _get_streamtree_edge_id(adata):
     """convert epg edge id to stream tree edge id."""
     dict_epg_to_st = dict()
     for i, x in enumerate(adata.uns['epg']['edge']):
@@ -145,8 +179,31 @@ def _get_streamtree_id(adata):
             if set(x) <= set(y):
                 dict_epg_to_st[i] = j
                 break
-    df_st = adata.obs['epg_edge_id'].map(dict_epg_to_st)
-    return df_st
+    df_edge_id = adata.obs['epg_edge_id'].map(dict_epg_to_st)
+    df_edge_id.name = 'st_edge_id'
+    return df_edge_id
+
+
+def _get_streamtree_edge_loc(adata, stream_tree):
+    source = adata.uns['stream_tree']['params']['source']
+    key = adata.uns['stream_tree']['params']['key']
+    stream_tree_edge = adata.uns['stream_tree']["edge"]
+    df = pd.Series(data=infer_pseudotime(
+                            adata,
+                            source=source,
+                            key=key,
+                            copy=True),
+                   index=adata.obs_names,
+                   name='st_edge_loc')
+    for edge in stream_tree_edge:
+        id_cells = stream_tree.edges[edge]['cells']
+        nodes_pre = nx.shortest_path(
+            stream_tree, source=source, target=edge[0])
+        len_pre = 0
+        for edge_pre in list(zip(nodes_pre[:-1], nodes_pre[1:])):
+            len_pre += stream_tree.edges[edge_pre]['len']
+        df.iloc[id_cells] = df.iloc[id_cells] - len_pre
+    return df
 
 
 def _add_stream_sc_pos(
@@ -178,7 +235,7 @@ def _add_stream_sc_pos(
             dist_pctl=dist_pctl, preference=preference)
     dict_path_len = nx.shortest_path_length(
         stream_tree, source=source, weight='len')
-    df_st_id = _get_streamtree_id(adata)
+    df_st_id = _get_streamtree_edge_id(adata)
     pseudotime = infer_pseudotime(adata, source=source, copy=True)
     df_cells_pos = pd.DataFrame(index=adata.obs.index, columns=['cell_pos'])
     dict_edge_pos = {}
@@ -199,7 +256,7 @@ def _add_stream_sc_pos(
         df_cells_pos.iloc[id_cells, 0] = \
             [cells_pos[i, :].tolist() for i in range(cells_pos.shape[0])]
         dict_edge_pos[tuple(edge)] = np.array([node_pos_st, node_pos_ed])
-        if(edge[0] not in dict_bfs_pre.keys()):
+        if edge[0] not in dict_bfs_pre.keys():
             dict_node_pos[edge[0]] = node_pos_st
         dict_node_pos[edge[1]] = node_pos_ed
         edge_pos = dict_edge_pos[tuple(edge)]
