@@ -400,46 +400,46 @@ def _cal_stream_polygon_string(
         stream_tree, source, preference=preference)
     dfs_nodes = list(dict.fromkeys(sum(dfs_edges, ())))
 
+    len_ori = {stream_tree.edges[x]['len'] for x in stream_tree_edge}
+    bfs_prev = dict(nx.bfs_predecessors(stream_tree, source))
+    bfs_next = dict(nx.bfs_successors(stream_tree, source))
+    dict_tree = {}
+    for x in dfs_nodes:
+        dict_tree[x] = {'prev': "", 'next': []}
+        if x in bfs_prev.keys():
+            dict_tree[x]['prev'] = bfs_prev[x]
+        if x in bfs_next.keys():
+            x_rank = [dfs_nodes.index(x_next) for x_next in bfs_next[x]]
+            dict_tree[x]['next'] = [
+                y for _, y in sorted(
+                    zip(x_rank, bfs_next[x]), key=lambda y: y[0])]
+
+    dict_shift_dist = dict()  # shifting distance of each branch
+    leaves = [n for n, d in stream_tree.degree() if d == 1]
+    id_leaf = 0
+    dfs_nodes_copy = deepcopy(dfs_nodes)
+    num_nonroot_leaf = len(list(set(leaves) - set([source])))
+    while len(dfs_nodes_copy) > 1:
+        node = dfs_nodes_copy.pop()
+        prev_node = dict_tree[node]['prev']
+        if node in leaves:
+            dict_shift_dist[(prev_node, node)] = \
+                -(float(1)/dist_scale)*(num_nonroot_leaf-1)/2.0 \
+                + id_leaf*(float(1)/dist_scale)
+            id_leaf = id_leaf+1
+        else:
+            next_nodes = dict_tree[node]['next']
+            dict_shift_dist[(prev_node, node)] = \
+                (sum([dict_shift_dist[(node, next_node)]
+                      for next_node in next_nodes]))/float(len(next_nodes))
+    if stream_tree.degree(source) > 1:
+        next_nodes = dict_tree[source]['next']
+        dict_shift_dist[(source, source)] = \
+            (sum([dict_shift_dist[(source, next_node)]
+                  for next_node in next_nodes]))/float(len(next_nodes))
+
     for ann in list_ann_string:
         df_stream[ann] = dict_ann[ann]
-        len_ori = {stream_tree.edges[x]['len'] for x in stream_tree_edge}
-        dict_tree = {}
-        bfs_prev = dict(nx.bfs_predecessors(stream_tree, source))
-        bfs_next = dict(nx.bfs_successors(stream_tree, source))
-        for x in dfs_nodes:
-            dict_tree[x] = {'prev': "", 'next': []}
-            if x in bfs_prev.keys():
-                dict_tree[x]['prev'] = bfs_prev[x]
-            if x in bfs_next.keys():
-                x_rank = [dfs_nodes.index(x_next) for x_next in bfs_next[x]]
-                dict_tree[x]['next'] = [
-                    y for _, y in sorted(
-                        zip(x_rank, bfs_next[x]), key=lambda y: y[0])]
-
-        dict_shift_dist = dict()  # shifting distance of each branch
-        leaves = [n for n, d in stream_tree.degree() if d == 1]
-        id_leaf = 0
-        dfs_nodes_copy = deepcopy(dfs_nodes)
-        num_nonroot_leaf = len(list(set(leaves) - set([source])))
-        while len(dfs_nodes_copy) > 1:
-            node = dfs_nodes_copy.pop()
-            prev_node = dict_tree[node]['prev']
-            if node in leaves:
-                dict_shift_dist[(prev_node, node)] = \
-                    -(float(1)/dist_scale)*(num_nonroot_leaf-1)/2.0 \
-                    + id_leaf*(float(1)/dist_scale)
-                id_leaf = id_leaf+1
-            else:
-                next_nodes = dict_tree[node]['next']
-                dict_shift_dist[(prev_node, node)] = \
-                    (sum([dict_shift_dist[(node, next_node)]
-                          for next_node in next_nodes]))/float(len(next_nodes))
-        if stream_tree.degree(source) > 1:
-            next_nodes = dict_tree[source]['next']
-            dict_shift_dist[(source, source)] = \
-                (sum([dict_shift_dist[(source, next_node)]
-                      for next_node in next_nodes]))/float(len(next_nodes))
-
         # dataframe of bins
         df_bins = pd.DataFrame(
             index=list(df_stream[ann].unique())
