@@ -1,7 +1,7 @@
 import sys
 
-if sys.version_info < (3, 6):
-    sys.exit('stream2 requires Python >= 3.6')
+if sys.version_info < (3, 7):
+    sys.exit('stream2 requires Python >= 3.7')
 
 from setuptools import setup, find_packages
 from pathlib import Path

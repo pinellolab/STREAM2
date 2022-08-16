@@ -6,7 +6,6 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from mpl_toolkits.axisartist.axislines import AxesZero
 from pandas.core.dtypes.common import is_numeric_dtype
 import seaborn as sns
 from adjustText import adjust_text
@@ -18,13 +17,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm
-from slugify import slugify
 
 from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
 from ._utils_stream import (
-    _add_stream_sc_pos)
+    _add_stream_sc_pos,
+    _cal_stream_polygon_string)
 
 lowess = sm.nonparametric.lowess
 
@@ -1339,18 +1338,22 @@ def stream_sc(
     fig_size: `tuple`, optional (default: (7,4.5))
         figure size.
     fig_legend_order: `dict`,optional (default: None)
-        Specified order for the appearance of the annotation keys.Only valid for ategorical variable  
+        Specified order for the appearance of the annotation keys.
+        Only valid for ategorical variable.
         e.g. fig_legend_order = {'ann1':['a','b','c'],'ann2':['aa','bb','cc']}
     fig_legend_ncol: `int`, optional (default: 1)
         The number of columns that the legend has.
     vmin,vmax: `float`, optional (default: None)
-        The min and max values are used to normalize continuous values. If None, the respective min and max of continuous values is used.
+        The min and max values are used to normalize continuous values.
+        If None, the respective min and max of continuous values is used.
     alpha: `float`, optional (default: 0.8)
         0.0 transparent through 1.0 opaque
     pad: `float`, optional (default: 1.08)
-        Padding between the figure edge and the edges of subplots, as a fraction of the font size.
+        Padding between the figure edge and the edges of subplots,
+        as a fraction of the font size.
     h_pad, w_pad: `float`, optional (default: None)
-        Padding (height/width) between edges of adjacent subplots, as a fraction of the font size. Defaults to pad.
+        Padding (height/width) between edges of adjacent subplots,
+        as a fraction of the font size. Defaults to pad.
     show_text: `bool`, optional (default: False)
         If True, node state label will be shown
     show_graph: `bool`, optional (default: False)
@@ -1358,7 +1361,8 @@ def stream_sc(
     save_fig: `bool`, optional (default: False)
         if True,save the figure.
     fig_path: `str`, optional (default: None)
-        if save_fig is True, specify figure path. if None, adata.uns['workdir'] will be used.
+        if save_fig is True, specify figure path.
+        if None, adata.uns['workdir'] will be used.
     fig_format: `str`, optional (default: 'pdf')
         if save_fig is True, specify figure format.
     plotly: `bool`, optional (default: False)
@@ -1367,10 +1371,8 @@ def stream_sc(
     Returns
     -------
     updates `adata` with the following fields.
-    X_stream_root: `numpy.ndarray` (`adata.obsm['X_stream_root']`)
-        Store #observations × 2 coordinates of cells in subwaymap plot.
-    stream_root: `dict` (`adata.uns['stream_root']`)
-        Store the coordinates of nodes ('nodes') and edges ('edges') in subwaymap plot.
+    stream_tree: `dict` (`adata.uns['stream_tree']`)
+        Store details of the tree structure used in stream plots.
     """
 
     if fig_size is None:
@@ -1486,14 +1488,14 @@ def stream_sc(
         )
     for ax_i in list_ax:
         ax_i.set_xlabel("pseudotime", labelpad=2)
-        ax_i.spines['left'].set_visible(False) 
+        ax_i.spines['left'].set_visible(False)
         ax_i.spines['right'].set_visible(False)
-        ax_i.spines['top'].set_visible(False) 
+        ax_i.spines['top'].set_visible(False)
         ax_i.get_yaxis().set_visible(False)
         ax_i.locator_params(axis='x', nbins=8)
         ax_i.tick_params(axis="x", pad=-1)
-        ax_i.plot((1), (0), ls="", marker=">", ms=10, color="k", 
-                transform=ax_i.transAxes, clip_on=False)
+        ax_i.plot((1), (0), ls="", marker=">", ms=10, color="k",
+                  transform=ax_i.transAxes, clip_on=False)
     if show_graph:
         for ax_i in list_ax:
             for edge_i in stream_edge_pos.keys():
