@@ -208,6 +208,13 @@ def _get_streamtree_edge_loc(adata, stream_tree):
     return df
 
 
+def _check_is_tree(adata, key='epg'):
+    epg_edge = adata.uns[key]["edge"]
+    G = nx.Graph()
+    G.add_edges_from(epg_edge)
+    return nx.is_tree(G)
+
+
 def _add_stream_sc_pos(
         adata,
         source=0,

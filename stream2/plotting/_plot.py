@@ -25,6 +25,7 @@ from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
 from ._utils_stream import (
+    _check_is_tree,
     _add_stream_sc_pos,
     _cal_stream_polygon_string,
     _cal_stream_polygon_numeric
@@ -1291,6 +1292,7 @@ def feature_path(
 def stream_sc(
     adata,
     source=0,
+    key='epg',
     color=None,
     dict_palette=None,
     dist_scale=1,
@@ -1381,6 +1383,8 @@ def stream_sc(
         Store details of the tree structure used in stream plots.
     """
 
+    assert _check_is_tree(adata, key=key), \
+        "`.pl.stream_sc()` only works for a tree structure"
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
     if save_fig is None:
@@ -1396,7 +1400,8 @@ def stream_sc(
         source=source,
         dist_scale=dist_scale,
         dist_pctl=dist_pctl,
-        preference=preference
+        preference=preference,
+        key=key,
     )
     stream_node = adata.uns['stream_tree']['node']
     stream_node_pos = adata.uns['stream_tree']['node_pos']
@@ -1550,6 +1555,7 @@ def stream_sc(
 def stream(
     adata,
     source=0,
+    key='epg',
     color=None,
     dict_palette=None,
     preference=None,
@@ -1643,6 +1649,9 @@ def stream(
     None
 
     """
+
+    assert _check_is_tree(adata, key=key), \
+        "`.pl.stream()` only works for a tree structure"
     if fig_size is None:
         fig_size = mpl.rcParams["figure.figsize"]
     if save_fig is None:
@@ -1698,7 +1707,8 @@ def stream(
             factor_min_win=factor_min_win,
             factor_width=factor_width,
             log_scale=log_scale,
-            factor_zoomin=factor_zoomin)
+            factor_zoomin=factor_zoomin,
+            key=key)
         dict_plot['string'] = [dict_verts, dict_extent]
 
     list_numeric_type = [k for k, v in dict_ann.items() if is_numeric_dtype(v)]
@@ -1716,7 +1726,8 @@ def stream(
                 factor_nrow=factor_nrow,
                 factor_ncol=factor_ncol,
                 log_scale=log_scale,
-                factor_zoomin=factor_zoomin)
+                factor_zoomin=factor_zoomin,
+                key=key)
         dict_plot['numeric'] = [
             verts, extent, ann_order, dict_ann_df, dict_im_array]
 
