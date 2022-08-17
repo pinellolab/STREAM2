@@ -315,6 +315,7 @@ def _learn_graph(
 
     adata.uns["epg"] = dict()
 
+    adata.uns["epg"]["node"] = np.arange(n_nodes)
     adata.uns["epg"]["node_pos"] = dict_epg["NodePositions"]
     adata.uns["epg"]["edge"] = dict_epg["Edges"][0]
     adata.uns["epg"]["params"] = {
@@ -721,11 +722,15 @@ def _store_graph_attributes(adata, mat, key):
         Edges=adata.uns[key]["edge"],
         Partition=node_id,
     )
+    edge_dist = np.linalg.norm(
+        mat - dict_proj['X_projected'],
+        axis=1)
 
     adata.obs[f"{key}_node_id"] = node_id.flatten()
     adata.obs[f"{key}_node_dist"] = node_dist
     adata.obs[f"{key}_edge_id"] = dict_proj["EdgeID"].astype(int)
     adata.obs[f"{key}_edge_loc"] = dict_proj["ProjectionValues"]
+    adata.obs[f"{key}_edge_dist"] = edge_dist
 
     # adata.obsm[f"X_{key}_proj"] = dict_proj["X_projected"]
 
@@ -848,8 +853,8 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
             ] = 1
 
     # allow unspecified clusters to connect to all other clusters
-    for l in labels_ignored:
-        adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 1
+    for x in labels_ignored:
+        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 1
 
     # remove forbidden connections given from paths_forbidden
     for p in paths_forbidden:
@@ -934,9 +939,9 @@ def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
             ] = 1
 
     # disallow unspecified clusters to connect to all other clusters
-    for l in labels_ignored:
-        adjmat[num_labels[l]] = adjmat[:, num_labels[l]] = 0
-        adjmat[num_labels[l], num_labels[l]] = 1
+    for x in labels_ignored:
+        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 0
+        adjmat[num_labels[x], num_labels[x]] = 1
 
     # remove forbidden connections given from paths_forbidden
     for p in paths_forbidden:

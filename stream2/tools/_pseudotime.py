@@ -5,14 +5,20 @@ import networkx as nx
 
 
 def infer_pseudotime(
-    adata, source, target=None, nodes_to_include=None, key="epg"
+    adata,
+    source,
+    target=None,
+    nodes_to_include=None,
+    key="epg",
+    copy=False,
 ):
     """Infer pseudotime
     Parameters
     ----------
     adata: AnnData
         Annotated data matrix.
-
+    copy: `bool`, optional (default: False)
+        If ``True``, return a copy instead of writing to adata.
     Returns
     -------
     """
@@ -97,10 +103,13 @@ def infer_pseudotime(
     dist_on_edge = len_edges_cell * prop_edge
     dist = dist_to_source + dist_on_edge
 
-    adata.obs[f"{key}_pseudotime"] = np.nan
-    adata.obs.loc[cells, f"{key}_pseudotime"] = dist
-    adata.uns[f"{key}_pseudotime_params"] = {
-        "source": source,
-        "target": target,
-        "nodes_to_include": nodes_to_include,
-    }
+    if copy:
+        return dist
+    else:
+        adata.obs[f"{key}_pseudotime"] = np.nan
+        adata.obs.loc[cells, f"{key}_pseudotime"] = dist
+        adata.uns[f"{key}_pseudotime_params"] = {
+            "source": source,
+            "target": target,
+            "nodes_to_include": nodes_to_include,
+        }
