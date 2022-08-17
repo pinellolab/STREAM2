@@ -1515,13 +1515,15 @@ def stream_sc(
                             branch_i.iloc[[ii, ii+1], 0],
                             branch_i.iloc[[ii, ii+1], 1],
                             c='#767070',
+                            zorder=-1,
                             alpha=0.8)
                     else:
                         ax_i.plot(
                             branch_i.iloc[[ii, ii+1], 0],
                             branch_i.iloc[[ii, ii+1], 1],
                             c='black',
-                            alpha=1)
+                            alpha=0.8,
+                            zorder=-1,)
     if show_text:
         for ax_i in list_ax:
             for i, node_i in enumerate(stream_node):
