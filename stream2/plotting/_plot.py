@@ -30,8 +30,6 @@ from ._utils_stream import (
     _cal_stream_polygon_numeric
 )
 
-lowess = sm.nonparametric.lowess
-
 
 def violin(
     adata,
@@ -1205,7 +1203,7 @@ def graph(
         plt.close(fig)
 
 
-def plot_features_in_pseudotime(
+def feature_path(
     adatas,
     features,
     source=None,
@@ -1216,7 +1214,9 @@ def plot_features_in_pseudotime(
     height=400,
     width=400,
     key="epg",
+    copy=False,
 ):
+    lowess = sm.nonparametric.lowess
     fig = make_subplots(
         rows=len(features), cols=len(adatas), subplot_titles=assays
     )
@@ -1284,7 +1284,8 @@ def plot_features_in_pseudotime(
         linecolor="black",
     )
     fig.update_traces(marker=dict(size=3))
-    return fig
+    if copy:
+        return fig
 
 
 def stream_sc(

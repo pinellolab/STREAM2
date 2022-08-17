@@ -8,7 +8,7 @@ from ._plot import (
     hist,
     dimension_reduction,
     graph,
-    plot_features_in_pseudotime,
+    feature_path,
     stream_sc
 )
 
