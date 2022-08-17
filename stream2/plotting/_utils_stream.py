@@ -358,7 +358,8 @@ def _cal_stream_polygon_string(
     factor_zoomin=100.0,
     key='epg'
 ):
-    list_ann_string = [k for k, v in dict_ann.items() if is_string_dtype(v)]
+    list_ann_string = [k for k, v in dict_ann.items()
+                       if not is_numeric_dtype(v)]
     if 'stream_tree' not in adata.uns_keys():
         if adata.uns['stream_tree']['params']['source'] != source:
             _construct_stream_tree(adata, source=source, key=key)
@@ -400,7 +401,7 @@ def _cal_stream_polygon_string(
         stream_tree, source, preference=preference)
     dfs_nodes = list(dict.fromkeys(sum(dfs_edges, ())))
 
-    len_ori = {stream_tree.edges[x]['len'] for x in stream_tree_edge}
+    len_ori = {tuple(x): stream_tree.edges[x]['len'] for x in stream_tree_edge}
     bfs_prev = dict(nx.bfs_predecessors(stream_tree, source))
     bfs_next = dict(nx.bfs_successors(stream_tree, source))
     dict_tree = {}
@@ -1330,7 +1331,7 @@ def _cal_stream_polygon_numeric(
         stream_tree, source, preference=preference)
     dfs_nodes = list(dict.fromkeys(sum(dfs_edges, ())))
 
-    len_ori = {stream_tree.edges[x]['len'] for x in stream_tree_edge}
+    len_ori = {tuple(x): stream_tree.edges[x]['len'] for x in stream_tree_edge}
     bfs_prev = dict(nx.bfs_predecessors(stream_tree, source))
     bfs_next = dict(nx.bfs_successors(stream_tree, source))
     dict_tree = {}
@@ -1370,8 +1371,8 @@ def _cal_stream_polygon_numeric(
 
     # dataframe of bins
     df_bins = pd.DataFrame(
-        index=['n_cells', 'boundary', 'center', 'edge'])
-    dict_ann_df = {ann: pd.DataFrame(index=['n_cells'])
+        index=['unknown', 'boundary', 'center', 'edge'])
+    dict_ann_df = {ann: pd.DataFrame(index=['unknown'])
                    for ann in list_ann_numeric}
     # number of merged sliding windows
     dict_merge_num = {ann: [] for ann in list_ann_numeric}
@@ -1455,7 +1456,7 @@ def _cal_stream_polygon_numeric(
                         df_edge_j[np.logical_and(
                             df_edge_j['st_edge_loc'] >= 0,
                             df_edge_j['st_edge_loc'] <= mat_w_common[
-                                i_win, 1])][ann].value_counts()
+                                i_win, 1])]['label'].value_counts()
                     df_bins.loc[cell_num_common2.index,
                                 "win"+str(total_bins + i_win)] = \
                         df_bins.loc[cell_num_common2.index,
@@ -1502,7 +1503,7 @@ def _cal_stream_polygon_numeric(
                     df_edge_i['st_edge_loc']
                     >= mat_w[i_win, 0],
                     df_edge_i['st_edge_loc']
-                    <= mat_w[i_win, 1])][ann].value_counts()
+                    <= mat_w[i_win, 1])]['label'].value_counts()
                 df_bins.loc[
                     cell_num.index,
                     "win"+str(total_bins+i_win)] = cell_num
@@ -1551,7 +1552,7 @@ def _cal_stream_polygon_numeric(
                     df_edge_i['st_edge_loc'] >=
                     bd_bins[0],
                     df_edge_i['st_edge_loc'] <=
-                    bd_bins[1])][ann].value_counts()
+                    bd_bins[1])]['label'].value_counts()
                 if len(id_stack) == max_binnum \
                         or any(cell_num > min_bin_cellnum) \
                         or i_win == mat_w.shape[0]-1:
@@ -1569,7 +1570,7 @@ def _cal_stream_polygon_numeric(
                         ann_values = df_edge_i[np.logical_and(
                             df_edge_i['st_edge_loc'] >= bd_bins[0],
                             df_edge_i['st_edge_loc'] <= bd_bins[1]
-                            )].groupby(['CELL_LABEL'])[ann].mean()
+                            )].groupby(['label'])[ann].mean()
                         dict_ann_df[ann].loc[
                             ann_values.index,
                             "win"+str(total_bins)] = ann_values
@@ -1620,7 +1621,7 @@ def _cal_stream_polygon_numeric(
                             df_edge_i['st_edge_loc']
                             > mat_w_common[i_win, 0],
                             df_edge_i['st_edge_loc']
-                            <= len_ori[edge_i])][ann].value_counts()
+                            <= len_ori[edge_i])]['label'].value_counts()
                     df_bins.loc[
                         cell_num_common1.index,
                         "win"+str(total_bins+i_win)] = cell_num_common1
@@ -1645,7 +1646,7 @@ def _cal_stream_polygon_numeric(
                                 df_edge_j['st_edge_loc'] >= 0,
                                 df_edge_j['st_edge_loc']
                                 <= mat_w_common[i_win, 1]
-                                )][ann].value_counts()
+                                )]['label'].value_counts()
                         df_bins.loc[cell_num_common2.index,
                                     "win"+str(total_bins+i_win)] = \
                             df_bins.loc[

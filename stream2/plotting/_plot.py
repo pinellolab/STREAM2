@@ -1666,7 +1666,7 @@ def stream(
                              "`adata.obs.columns` and `adata.var_names`")
 
     legend_order = {ann: np.unique(dict_ann[ann]) for ann in color
-                    if is_string_dtype(dict_ann[ann])}
+                    if not is_numeric_dtype(dict_ann[ann])}
     if fig_legend_order is not None:
         if not isinstance(fig_legend_order, dict):
             raise TypeError("`fig_legend_order` must be a dictionary")
@@ -1678,12 +1678,14 @@ def stream(
                       "due to incorrect name or data type")
 
     dict_plot = dict()
-    list_string_type = [k for k, v in dict_ann.items() if is_string_dtype(v)]
+
+    list_string_type = [k for k, v in dict_ann.items()
+                        if not is_numeric_dtype(v)]
     if len(list_string_type) > 0:
         dict_verts, dict_extent = _cal_stream_polygon_string(
             adata,
             dict_ann,
-            root=source,
+            source=source,
             preference=preference,
             dist_scale=dist_scale,
             factor_num_win=factor_num_win,
@@ -1693,7 +1695,7 @@ def stream(
             factor_zoomin=factor_zoomin)
         dict_plot['string'] = [dict_verts, dict_extent]
 
-    list_numeric_type = [k for k,v in dict_ann.items() if is_numeric_dtype(v)]
+    list_numeric_type = [k for k, v in dict_ann.items() if is_numeric_dtype(v)]
     if len(list_numeric_type) > 0:
         verts, extent, ann_order, dict_ann_df, dict_im_array = \
             _cal_stream_polygon_numeric(
@@ -1713,7 +1715,7 @@ def stream(
             verts, extent, ann_order, dict_ann_df, dict_im_array]
 
     for ann in color:
-        if is_string_dtype(dict_ann[ann]):
+        if not is_numeric_dtype(dict_ann[ann]):
             if "color" not in adata.uns.keys():
                 adata.uns["color"] = dict()
             if ann not in dict_palette.keys():
@@ -1741,7 +1743,7 @@ def stream(
                 verts_cell = verts[ann_i]
                 polygon = Polygon(
                     verts_cell, closed=True,
-                    color=dict_palette[ann_i],
+                    color=dict_palette[ann][ann_i],
                     alpha=0.8, lw=0)
                 ax.add_patch(polygon)
             ax.legend(
@@ -1752,12 +1754,12 @@ def stream(
                 frameon=False,
                 columnspacing=0.4,
                 borderaxespad=0.2,
-                handletextpad=0.3,)        
+                handletextpad=0.3,)
         else:
-            verts = dict_plot['numeric'][0] 
+            verts = dict_plot['numeric'][0]
             extent = dict_plot['numeric'][1]
             ann_order = dict_plot['numeric'][2]
-            dict_ann_df = dict_plot['numeric'][3]  
+            dict_ann_df = dict_plot['numeric'][3]
             dict_im_array = dict_plot['numeric'][4]
             xmin = extent['xmin']
             xmax = extent['xmax']
@@ -1802,7 +1804,7 @@ def stream(
                 transform=ax.transAxes, clip_on=False)
 
         ax.set_title(ann)
-        plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)             
+        plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
         if save_fig:
             file_path_S = os.path.join(fig_path, source)
             if not os.path.exists(file_path_S):
