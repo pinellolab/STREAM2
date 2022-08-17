@@ -1649,33 +1649,36 @@ def stream(
 
     if source not in adata.uns['stream_tree']['node']:
         raise ValueError(f"There is no source {source}")
-    if color is None:
-        color = ['label']
-    color = list(dict.fromkeys(color))  # remove duplicate keys
+
     if dict_palette is None:
         dict_palette = dict()
 
     dict_ann = dict()
-    for ann in color:
-        if ann in adata.obs.columns:
-            dict_ann[ann] = adata.obs[ann]
-        elif ann in adata.var_names:
-            dict_ann[ann] = adata.obs_vector(ann)
-        else:
-            raise ValueError(f"could not find {ann} in "
-                             "`adata.obs.columns` and `adata.var_names`")
-
-    legend_order = {ann: np.unique(dict_ann[ann]) for ann in color
-                    if not is_numeric_dtype(dict_ann[ann])}
-    if fig_legend_order is not None:
-        if not isinstance(fig_legend_order, dict):
-            raise TypeError("`fig_legend_order` must be a dictionary")
-        for ann in fig_legend_order.keys():
-            if ann in legend_order.keys():
-                legend_order[ann] = fig_legend_order[ann]
+    if color is None:
+        dict_ann['label'] = pd.Series(index=adata.obs_names, data='unknown')
+        legend_order = {'label': ['unknown']}
+    else:
+        color = [color] if isinstance(color, str) else color
+        color = list(dict.fromkeys(color))  # remove duplicate keys
+        for ann in color:
+            if ann in adata.obs.columns:
+                dict_ann[ann] = adata.obs[ann]
+            elif ann in adata.var_names:
+                dict_ann[ann] = adata.obs_vector(ann)
             else:
-                print(f"{ann} is ignored for ordering legend labels"
-                      "due to incorrect name or data type")
+                raise ValueError(f"could not find {ann} in "
+                                 "`adata.obs.columns` and `adata.var_names`")
+        legend_order = {ann: np.unique(dict_ann[ann]) for ann in color
+                        if not is_numeric_dtype(dict_ann[ann])}
+        if fig_legend_order is not None:
+            if not isinstance(fig_legend_order, dict):
+                raise TypeError("`fig_legend_order` must be a dictionary")
+            for ann in fig_legend_order.keys():
+                if ann in legend_order.keys():
+                    legend_order[ann] = fig_legend_order[ann]
+                else:
+                    print(f"{ann} is ignored for ordering legend labels"
+                          "due to incorrect name or data type")
 
     dict_plot = dict()
 
@@ -1714,7 +1717,7 @@ def stream(
         dict_plot['numeric'] = [
             verts, extent, ann_order, dict_ann_df, dict_im_array]
 
-    for ann in color:
+    for ann in dict_ann.keys():
         if not is_numeric_dtype(dict_ann[ann]):
             if "color" not in adata.uns.keys():
                 adata.uns["color"] = dict()
@@ -1726,8 +1729,9 @@ def stream(
                     dict_palette[ann] = adata.uns["color"][ann + "_color"]
                 else:
                     dict_palette[ann] = generate_palette(dict_ann[ann])
-                    adata.uns["color"][ann + "_color"] = \
-                        dict_palette[ann].copy()
+                    if color is not None:
+                        adata.uns["color"][ann + "_color"] = \
+                            dict_palette[ann].copy()
             verts = dict_plot['string'][0][ann]
             extent = dict_plot['string'][1][ann]
             xmin = extent['xmin']
@@ -1746,15 +1750,16 @@ def stream(
                     color=dict_palette[ann][ann_i],
                     alpha=0.8, lw=0)
                 ax.add_patch(polygon)
-            ax.legend(
-                legend_labels,
-                bbox_to_anchor=(1.03, 0.5),
-                loc='center left',
-                ncol=fig_legend_ncol,
-                frameon=False,
-                columnspacing=0.4,
-                borderaxespad=0.2,
-                handletextpad=0.3,)
+            if color is not None:
+                ax.legend(
+                    legend_labels,
+                    bbox_to_anchor=(1.03, 0.5),
+                    loc='center left',
+                    ncol=fig_legend_ncol,
+                    frameon=False,
+                    columnspacing=0.4,
+                    borderaxespad=0.2,
+                    handletextpad=0.3,)
         else:
             verts = dict_plot['numeric'][0]
             extent = dict_plot['numeric'][1]
@@ -1802,14 +1807,22 @@ def stream(
         ax.tick_params(axis="x", pad=-1)
         ax.plot((1), (0), ls="", marker=">", ms=10, color="k",
                 transform=ax.transAxes, clip_on=False)
-
-        ax.set_title(ann)
+        if color is not None:
+            ax.set_title(ann)
         plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
         if save_fig:
-            file_path_S = os.path.join(fig_path, source)
+            if not os.path.exists(fig_path):
+                os.makedirs(fig_path)
+            file_path_S = os.path.join(fig_path, f'source_{source}')
             if not os.path.exists(file_path_S):
                 os.makedirs(file_path_S)
-            plt.savefig(os.path.join(
-                file_path_S, 'stream_' + slugify(ann) + '.' + fig_format),
-                pad_inches=1, bbox_inches='tight')
+            if color is None:
+                plt.savefig(os.path.join(
+                    file_path_S, 'plot_stream.' + fig_format),
+                    pad_inches=1, bbox_inches='tight')
+            else:
+                plt.savefig(os.path.join(
+                    file_path_S,
+                    'plot_stream_' + slugify(ann) + '.' + fig_format),
+                    pad_inches=1, bbox_inches='tight')
             plt.close(fig)
