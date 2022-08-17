@@ -6,6 +6,7 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.patches import Polygon
 from pandas.core.dtypes.common import is_numeric_dtype
 import seaborn as sns
 from adjustText import adjust_text
@@ -18,12 +19,16 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm
 
+from slugify import slugify
+
 from .._settings import settings
 from ._utils import generate_palette
 from .. import _utils
 from ._utils_stream import (
     _add_stream_sc_pos,
-    _cal_stream_polygon_string)
+    _cal_stream_polygon_string,
+    _cal_stream_polygon_numeric
+)
 
 lowess = sm.nonparametric.lowess
 
@@ -1536,3 +1541,272 @@ def stream_sc(
             bbox_inches="tight",
         )
         plt.close()
+
+
+def stream(
+    adata,
+    source=0,
+    color=None,
+    dict_palette=None,
+    preference=None,
+    dist_scale=0.9,
+    factor_num_win=10,
+    factor_min_win=2.0,
+    factor_width=2.5,
+    factor_nrow=200,
+    factor_ncol=400,
+    log_scale=False,
+    factor_zoomin=100.0,
+    fig_size=(7, 4.5),
+    fig_legend_order=None,
+    fig_legend_ncol=1,
+    fig_colorbar_aspect=30,
+    vmin=None,
+    vmax=None,
+    pad=1.08,
+    w_pad=None,
+    h_pad=None,
+    save_fig=False,
+    fig_path=None,
+    fig_format='png'
+):
+    """Generate stream plot at density level
+
+    Parameters
+    ----------
+    adata: AnnData
+        Annotated data matrix.
+    root: `str`, optional (default: 'S0'):
+        The starting node
+    color: `list` optional (default: None)
+        Column names of observations (adata.obs.columns)
+        or variable names(adata.var_names)
+         A list of names to be plotted.
+    preference: `list`, optional (default: None):
+        The preference of nodes. The branch with speficied nodes are preferred
+        and will be put on the upper part of stream plot.
+        The higher ranks the node have,
+        the closer to the top the branch containing the node is.
+    dist_scale: `float`,optional (default: 0.9)
+        Scaling factor. It controls the width of STREAM plot branches.
+        The smaller, the thinner the branch will be.
+    factor_num_win: `int`, optional (default: 10)
+        Number of sliding windows used for making stream plot.
+        It controls the smoothness of STREAM plot.
+    factor_min_win: `float`, optional (default: 2.0)
+        The minimum number of sliding windows.
+        It controls the resolution of STREAM plot.
+        The window size is calculated based on shortest branch.
+        (suggested range: 1.5~3.0)
+    factor_width: `float`, optional (default: 2.5)
+        The ratio between length and width of stream plot.
+    factor_nrow: `int`, optional (default: 200)
+        The number of rows in the array used to plot continuous values.
+    factor_ncol: `int`, optional (default: 400)
+        The number of columns in the array used to plot continuous values
+    log_scale: `bool`, optional (default: False)
+        If True,the number of cells (the width) is logarithmized
+        when drawing stream plot.
+    factor_zoomin: `float`, optional (default: 100.0)
+        If log_scale is True, the factor used to zoom in the thin branches
+    fig_size: `tuple`, optional (default: (7,4.5))
+        figure size.
+    fig_legend_order: `dict`,optional (default: None)
+        Specified order for the appearance of the annotation keys.
+        Only valid for ategorical variable.
+        e.g. fig_legend_order = {'ann1':['a','b','c'],'ann2':['aa','bb','cc']}
+    fig_legend_ncol: `int`, optional (default: 1)
+        The number of columns that the legend has.
+    vmin,vmax: `float`, optional (default: None)
+        The min and max values are used to normalize continuous values.
+        If None, the respective min and max of continuous values is used.
+    pad: `float`, optional (default: 1.08)
+        Padding between the figure edge and the edges of subplots,
+        as a fraction of the font size.
+    h_pad, w_pad: `float`, optional (default: None)
+        Padding (height/width) between edges of adjacent subplots,
+        as a fraction of the font size. Defaults to pad.
+    save_fig: `bool`, optional (default: False)
+        if True,save the figure.
+    fig_path: `str`, optional (default: None)
+        if save_fig is True, specify figure path.
+        if None, adata.uns['workdir'] will be used.
+    fig_format: `str`, optional (default: 'pdf')
+        if save_fig is True, specify figure format.
+
+    Returns
+    -------
+    None
+
+    """
+    if fig_size is None:
+        fig_size = mpl.rcParams["figure.figsize"]
+    if save_fig is None:
+        save_fig = settings.save_fig
+    if fig_path is None:
+        fig_path = os.path.join(settings.workdir, "figures")
+
+    if source not in adata.uns['stream_tree']['node']:
+        raise ValueError(f"There is no source {source}")
+    if color is None:
+        color = ['label']
+    color = list(dict.fromkeys(color))  # remove duplicate keys
+    if dict_palette is None:
+        dict_palette = dict()
+
+    dict_ann = dict()
+    for ann in color:
+        if ann in adata.obs.columns:
+            dict_ann[ann] = adata.obs[ann]
+        elif ann in adata.var_names:
+            dict_ann[ann] = adata.obs_vector(ann)
+        else:
+            raise ValueError(f"could not find {ann} in "
+                             "`adata.obs.columns` and `adata.var_names`")
+
+    legend_order = {ann: np.unique(dict_ann[ann]) for ann in color
+                    if is_string_dtype(dict_ann[ann])}
+    if fig_legend_order is not None:
+        if not isinstance(fig_legend_order, dict):
+            raise TypeError("`fig_legend_order` must be a dictionary")
+        for ann in fig_legend_order.keys():
+            if ann in legend_order.keys():
+                legend_order[ann] = fig_legend_order[ann]
+            else:
+                print(f"{ann} is ignored for ordering legend labels"
+                      "due to incorrect name or data type")
+
+    dict_plot = dict()
+    list_string_type = [k for k, v in dict_ann.items() if is_string_dtype(v)]
+    if len(list_string_type) > 0:
+        dict_verts, dict_extent = _cal_stream_polygon_string(
+            adata,
+            dict_ann,
+            root=source,
+            preference=preference,
+            dist_scale=dist_scale,
+            factor_num_win=factor_num_win,
+            factor_min_win=factor_min_win,
+            factor_width=factor_width,
+            log_scale=log_scale,
+            factor_zoomin=factor_zoomin)
+        dict_plot['string'] = [dict_verts, dict_extent]
+
+    list_numeric_type = [k for k,v in dict_ann.items() if is_numeric_dtype(v)]
+    if len(list_numeric_type) > 0:
+        verts, extent, ann_order, dict_ann_df, dict_im_array = \
+            _cal_stream_polygon_numeric(
+                adata,
+                dict_ann,
+                source=source,
+                preference=preference,
+                dist_scale=dist_scale,
+                factor_num_win=factor_num_win,
+                factor_min_win=factor_min_win,
+                factor_width=factor_width,
+                factor_nrow=factor_nrow,
+                factor_ncol=factor_ncol,
+                log_scale=log_scale,
+                factor_zoomin=factor_zoomin)
+        dict_plot['numeric'] = [
+            verts, extent, ann_order, dict_ann_df, dict_im_array]
+
+    for ann in color:
+        if is_string_dtype(dict_ann[ann]):
+            if "color" not in adata.uns.keys():
+                adata.uns["color"] = dict()
+            if ann not in dict_palette.keys():
+                if (ann + "_color" in adata.uns["color"].keys())\
+                    and all(np.isin(
+                        np.unique(dict_ann[ann]),
+                        list(adata.uns["color"][ann + "_color"].keys()),)):
+                    dict_palette[ann] = adata.uns["color"][ann + "_color"]
+                else:
+                    dict_palette[ann] = generate_palette(dict_ann[ann])
+                    adata.uns["color"][ann + "_color"] = \
+                        dict_palette[ann].copy()
+            verts = dict_plot['string'][0][ann]
+            extent = dict_plot['string'][1][ann]
+            xmin = extent['xmin']
+            xmax = extent['xmax']
+            ymin = extent['ymin'] - (extent['ymax'] - extent['ymin'])*0.1
+            ymax = extent['ymax'] + (extent['ymax'] - extent['ymin'])*0.1
+
+            fig = plt.figure(figsize=fig_size)
+            ax = fig.add_subplot(1, 1, 1)
+            legend_labels = []
+            for ann_i in legend_order[ann]:
+                legend_labels.append(ann_i)
+                verts_cell = verts[ann_i]
+                polygon = Polygon(
+                    verts_cell, closed=True,
+                    color=dict_palette[ann_i],
+                    alpha=0.8, lw=0)
+                ax.add_patch(polygon)
+            ax.legend(
+                legend_labels,
+                bbox_to_anchor=(1.03, 0.5),
+                loc='center left',
+                ncol=fig_legend_ncol,
+                frameon=False,
+                columnspacing=0.4,
+                borderaxespad=0.2,
+                handletextpad=0.3,)        
+        else:
+            verts = dict_plot['numeric'][0] 
+            extent = dict_plot['numeric'][1]
+            ann_order = dict_plot['numeric'][2]
+            dict_ann_df = dict_plot['numeric'][3]  
+            dict_im_array = dict_plot['numeric'][4]
+            xmin = extent['xmin']
+            xmax = extent['xmax']
+            ymin = extent['ymin'] - (extent['ymax'] - extent['ymin'])*0.1
+            ymax = extent['ymax'] + (extent['ymax'] - extent['ymin'])*0.1
+
+            # clip parts according to determined polygon
+            fig = plt.figure(figsize=fig_size)
+            ax = fig.add_subplot(1, 1, 1)
+            for ann_i in ann_order:
+                vmin_i = dict_ann_df[ann].loc[ann_i, :].min()\
+                    if vmin is None else vmin
+                vmax_i = dict_ann_df[ann].loc[ann_i, :].max()\
+                    if vmax is None else vmax
+                im = ax.imshow(
+                    dict_im_array[ann][ann_i],
+                    interpolation='bicubic',
+                    extent=[xmin, xmax, ymin, ymax],
+                    vmin=vmin_i,
+                    vmax=vmax_i,
+                    aspect='auto')
+                verts_cell = verts[ann_i]
+                clip_path = Polygon(
+                    verts_cell, facecolor='none',
+                    edgecolor='none', closed=True)
+                ax.add_patch(clip_path)
+                im.set_clip_path(clip_path)
+                cbar = plt.colorbar(
+                    im, ax=ax, pad=0.04, fraction=0.02,
+                    aspect=fig_colorbar_aspect)
+                cbar.ax.locator_params(nbins=5)
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_xlabel("pseudotime", labelpad=2)
+        ax.spines['left'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.locator_params(axis='x', nbins=8)
+        ax.tick_params(axis="x", pad=-1)
+        ax.plot((1), (0), ls="", marker=">", ms=10, color="k",
+                transform=ax.transAxes, clip_on=False)
+
+        ax.set_title(ann)
+        plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)             
+        if save_fig:
+            file_path_S = os.path.join(fig_path, source)
+            if not os.path.exists(file_path_S):
+                os.makedirs(file_path_S)
+            plt.savefig(os.path.join(
+                file_path_S, 'stream_' + slugify(ann) + '.' + fig_format),
+                pad_inches=1, bbox_inches='tight')
+            plt.close(fig)
