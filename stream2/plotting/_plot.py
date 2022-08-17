@@ -1534,10 +1534,11 @@ def stream_sc(
                     ha='left',
                     va='bottom')
     if save_fig:
-        if not os.path.exists(fig_path):
-            os.makedirs(fig_path)
+        file_path_S = os.path.join(fig_path, f'source_{source}')
+        if not os.path.exists(file_path_S):
+            os.makedirs(file_path_S)
         plt.savefig(
-            os.path.join(fig_path, fig_name),
+            os.path.join(file_path_S, fig_name),
             pad_inches=1,
             bbox_inches="tight",
         )
@@ -1811,8 +1812,6 @@ def stream(
             ax.set_title(ann)
         plt.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad)
         if save_fig:
-            if not os.path.exists(fig_path):
-                os.makedirs(fig_path)
             file_path_S = os.path.join(fig_path, f'source_{source}')
             if not os.path.exists(file_path_S):
                 os.makedirs(file_path_S)
