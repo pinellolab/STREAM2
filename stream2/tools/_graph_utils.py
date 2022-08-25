@@ -35,6 +35,7 @@ def find_paths(
     epg_mu=None,
     epg_cycle_lambda=None,
     epg_cycle_mu=None,
+    ignore_equivalent=False,
     key="epg",
 ):
     """This function tries to add extra paths to the graph by computing a
@@ -151,6 +152,7 @@ def find_paths(
             epg_cycle_lambda=epg_cycle_lambda,
             epg_cycle_mu=epg_cycle_mu,
             use_weights=use_weights,
+            ignore_equivalent=ignore_equivalent,
             plot=plot,
             verbose=verbose,
             inplace=inplace,
@@ -174,6 +176,7 @@ def _find_paths(
     epg_cycle_lambda=None,
     epg_cycle_mu=None,
     use_weights=False,
+    ignore_equivalent=False,
     plot=False,
     verbose=True,
     inplace=False,
@@ -209,6 +212,7 @@ def _find_paths(
         allow_same_branch=allow_same_branch,
         fit_loops=fit_loops,
         weights=weights,
+        ignore_equivalent=ignore_equivalent,
         plot=plot,
         verbose=verbose,
     )
