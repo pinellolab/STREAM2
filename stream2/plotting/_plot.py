@@ -1075,7 +1075,7 @@ def graph(
     epg_params = adata.uns[key]["params"]
     obsm = epg_params["obsm"]
     layer = epg_params["layer"]
-    G = nx.from_scipy_sparse_matrix(mat_conn)
+    G = nx.from_scipy_sparse_array(mat_conn)
 
     if obsm is not None:
         X = adata.obsm[obsm].copy()
