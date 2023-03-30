@@ -6,12 +6,6 @@ STREAM2: Fast, scalable, and interactive trajectory analysis of single-cell omic
 
 ![simba](./docs/source/_static/img/logo.png?raw=true)
 
-[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/stream/README.html)
-
-<!-- [![Build Status](https://travis-ci.org/pinellolab/STREAM.svg)](https://travis-ci.org/pinellolab/STREAM) -->
-
-[![CI](https://github.com/pinellolab/STREAM/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/pinellolab/STREAM/actions/workflows/python-package-conda.yml)
-
 Latest News
 -----------
 
@@ -33,6 +27,7 @@ We also provide an accompanying interactive website to allow non-expert users to
 
 ![simba](./docs/source/_static/img/Fig1_V2.1.jpg?raw=true)
 
+<<<<<<< Updated upstream
 Installation with Github with latest branch (Recommended)
 ----------------------------------------
 ```sh
@@ -71,3 +66,11 @@ Tutorial
 --------
 
 Tutorials for the usage of STREAM2 can be found at **STREAM2_tutorial** repositories [https://github.com/pinellolab/STREAM2_tutorials] It includes tutorials for scRNA-seq data, scATAC-seq data, protenomics data, DNA methelyation data, and multiomics data.
+=======
+Installation
+----------------------------------------
+```sh
+$ pip install git+https://github.com/pinellolab/STREAM2
+```
+
+>>>>>>> Stashed changes
