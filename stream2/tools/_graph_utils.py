@@ -390,7 +390,7 @@ def find_disconnected_components(
     sc.tl.paga(adata, groups=groups, neighbors_key=neighbors_key)
     # edges = np.argwhere(adata.uns["paga"]["connectivities"])
     # edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
-    g = nx.convert_matrix.from_scipy_sparse_matrix(
+    g = nx.convert_matrix.from_scipy_sparse_array(
         adata.uns["paga"]["connectivities_tree"]
     )
     comps = [list(c) for c in nx.algorithms.components.connected_components(g)]
