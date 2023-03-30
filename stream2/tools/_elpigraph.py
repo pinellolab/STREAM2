@@ -732,7 +732,7 @@ def _store_graph_attributes(adata, mat, key):
 
     G = nx.Graph()
     G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
-    mat_conn = nx.to_scipy_sparse_matrix(
+    mat_conn = nx.to_scipy_sparse_array(
         G,
         nodelist=np.arange(len(adata.uns[key]["node_pos"])),
         weight="weight",
