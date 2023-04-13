@@ -650,7 +650,8 @@ def _seed_graph(
         else:
             weights = None
         kmeans = KMeans(
-            n_clusters=n_clusters, init="k-means++", random_state=42
+            n_clusters=n_clusters, init="k-means++", 
+            n_init=10, max_iter=300, tol=0.0001, algorithm='lloyd',random_state=42
         ).fit(mat, sample_weight=weights)
         cluster_labels = kmeans.labels_
         init_nodes_pos = kmeans.cluster_centers_
