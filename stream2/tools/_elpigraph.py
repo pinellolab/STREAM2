@@ -78,13 +78,17 @@ def learn_graph(
     edge: `array` (`.uns['epg']['edge']`)
         Node edges.
     """
-
     if use_partition:
         print("Learning elastic principal graph for each partition...")
         if type(use_partition) is bool:
             partitions = adata.obs["partition"].unique()
+        elif type(use_partition) is list:
+            partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool")
+            raise ValueError(
+                "use_partition should be a bool or a list of partitions"
+            )
+
         if ordinal_label is not None:
             raise ValueError(
                 "use_partition can't be used together with ordinal_label"
