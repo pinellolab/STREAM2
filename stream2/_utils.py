@@ -112,7 +112,7 @@ def get_path(
     path_alias = "Path_%s-%s-%s" % (source, nodes_to_include, target)
     print(
         len(cells),
-        " Cells are slected for Path_Source_Nodes-to-include_Target : ",
+        "Cells are selected for Path_Source_Nodes-to-include_Target : ",
         path_alias,
     )
     return cells, path_alias
