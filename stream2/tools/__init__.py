@@ -24,4 +24,5 @@ from ._graph_utils import (
     smooth_ordinal_labels,
     early_groups,
     interpolate,
+    use_graph_with_n_nodes,
 )

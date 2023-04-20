@@ -2,9 +2,9 @@ import networkx as nx
 import elpigraph
 import numpy as np
 import scanpy as sc
+import scipy
 import statsmodels.api
 from sklearn.neighbors import KNeighborsRegressor
-
 
 from ._elpigraph import (
     learn_graph,
@@ -31,6 +31,11 @@ def find_paths(
     inplace=False,
     use_weights=False,
     use_partition=False,
+    epg_lambda=None,
+    epg_mu=None,
+    epg_cycle_lambda=None,
+    epg_cycle_mu=None,
+    ignore_equivalent=False,
     key="epg",
 ):
     """This function tries to add extra paths to the graph by computing a
@@ -98,9 +103,12 @@ def find_paths(
                     radius=radius,
                     allow_same_branch=allow_same_branch,
                     fit_loops=fit_loops,
-                    Lambda=p_adata.uns[key]["params"]["epg_lambda"],
-                    Mu=p_adata.uns[key]["params"]["epg_mu"],
+                    epg_lambda=epg_lambda,
+                    epg_mu=epg_mu,
+                    epg_cycle_lambda=epg_cycle_lambda,
+                    epg_cycle_mu=epg_cycle_mu,
                     use_weights=use_weights,
+                    ignore_equivalent=ignore_equivalent,
                     plot=plot,
                     verbose=verbose,
                     inplace=inplace,
@@ -142,9 +150,12 @@ def find_paths(
             radius=radius,
             allow_same_branch=allow_same_branch,
             fit_loops=fit_loops,
-            Lambda=adata.uns[key]["params"]["epg_lambda"],
-            Mu=adata.uns[key]["params"]["epg_mu"],
+            epg_lambda=epg_lambda,
+            epg_mu=epg_mu,
+            epg_cycle_lambda=epg_cycle_lambda,
+            epg_cycle_mu=epg_cycle_mu,
             use_weights=use_weights,
+            ignore_equivalent=ignore_equivalent,
             plot=plot,
             verbose=verbose,
             inplace=inplace,
@@ -163,9 +174,12 @@ def _find_paths(
     radius=None,
     allow_same_branch=True,
     fit_loops=True,
-    Lambda=0.02,
-    Mu=0.1,
+    epg_lambda=None,
+    epg_mu=None,
+    epg_cycle_lambda=None,
+    epg_cycle_mu=None,
     use_weights=False,
+    ignore_equivalent=False,
     plot=False,
     verbose=True,
     inplace=False,
@@ -173,10 +187,6 @@ def _find_paths(
 ):
 
     # --- Init parameters, variables
-    X = _get_graph_data(adata, key)
-    init_nodes_pos = adata.uns[key]["node_pos"]
-    init_edges = adata.uns[key]["edge"]
-
     if use_weights:
         if "pointweights" not in adata.obs:
             raise ValueError(
@@ -186,31 +196,31 @@ def _find_paths(
     else:
         weights = None
 
+    X = _get_graph_data(adata, key)
+    PG = stream2elpi(adata, key)
     PG = elpigraph.findPaths(
         X,
-        dict(
-            NodePositions=init_nodes_pos,
-            Edges=[init_edges],
-            Lambda=Lambda,
-            Mu=Mu,
-        ),
+        PG,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Lambda=epg_cycle_lambda,
+        cycle_Mu=epg_cycle_mu,
         min_path_len=min_path_len,
         nnodes=n_nodes,
         max_inner_fraction=max_inner_fraction,
         min_node_n_points=min_node_n_points,
         max_n_points=max_n_points,
-        # max_empty_curve_fraction=.2,
         min_compactness=min_compactness,
         radius=radius,
         allow_same_branch=allow_same_branch,
         fit_loops=fit_loops,
         weights=weights,
+        ignore_equivalent=ignore_equivalent,
         plot=plot,
         verbose=verbose,
     )
 
     if PG is None:
-        print("Found no valid path to add")
         return
     if inplace:
         adata.uns[key]["node_pos"] = PG["addLoopsdict"]["merged_nodep"]
@@ -226,22 +236,22 @@ def add_path(
     n_nodes=None,
     use_weights=False,
     refit_graph=False,
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
+    epg_mu=None,
+    epg_lambda=None,
+    epg_cycle_mu=None,
+    epg_cycle_lambda=None,
     key="epg",
 ):
 
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns[key]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns[key]["params"]["epg_lambda"]
+    if epg_cycle_mu is None:
+        epg_cycle_mu = epg_mu
+    if epg_cycle_lambda is None:
+        epg_cycle_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
@@ -257,10 +267,10 @@ def add_path(
         n_nodes=n_nodes,
         weights=weights,
         refit_graph=refit_graph,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=epg_cycle_mu,
+        cycle_Lambda=epg_cycle_lambda,
     )
 
     adata.uns["epg"]["node_pos"] = PG["NodePositions"]
@@ -277,22 +287,22 @@ def del_path(
     nodes_to_include=None,
     use_weights=False,
     refit_graph=False,
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
+    epg_mu=None,
+    epg_lambda=None,
+    epg_cycle_mu=None,
+    epg_cycle_lambda=None,
     key="epg",
 ):
 
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns[key]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns[key]["params"]["epg_lambda"]
+    if epg_cycle_mu is None:
+        epg_cycle_mu = epg_mu
+    if epg_cycle_lambda is None:
+        epg_cycle_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
@@ -308,10 +318,10 @@ def del_path(
         nodes_to_include=nodes_to_include,
         weights=weights,
         refit_graph=refit_graph,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=epg_cycle_mu,
+        cycle_Lambda=epg_cycle_lambda,
     )
 
     adata.uns["epg"]["node_pos"] = PG["NodePositions"]
@@ -451,6 +461,40 @@ def ordinal_knn(
     return_sparse=False,
     stages=None,
 ):
+    """Supervised (ordinal) nearest-neighbor search.
+
+    Parameters
+    ----------
+    n_neighbors: int
+        Number of neighbors
+    n_natural: int
+        Number of natural neighbors (between 0 and n_neighbors-1)
+        to force the graph to retain. Tunes the strength of supervision
+    metric: str
+        One of sklearn's distance metrics
+    method : str (default='force')
+        if 'force', for each point at stage[i] get n_neighbors, forcing:
+            - n_neighbors/3 to be from stage[i-1]
+            - n_neighbors/3 to be from stage[i]
+            - n_neighbors/3 to be from stage[i+1]
+            For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
+
+        if 'guide', for each point at stage[i] get n_neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]},
+            without constraints on proportions
+    return_sparse: bool
+        Whether to return the graph in sparse form
+        or as longform indices and distances
+    stages: list
+        Ordered list of ordinal label stages (low to high).
+        If None, taken as np.unique(ordinal_label)
+
+    Returns
+    -------
+    Supervised nearest-neighbors as a graph in sparse form
+    or as longform indices and distances
+
+    """
 
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
         raise ValueError("Only one of `layer` and `obsm` can be used")
@@ -497,7 +541,41 @@ def smooth_ordinal_labels(
     method="guide",
     stages=None,
 ):
+    """Smooth ordinal labels into a continuous vector
 
+    Parameters
+    ----------
+    root: int
+        Index of chosen root data points
+    n_neighbors: int
+        Number of neighbors
+    n_natural: int
+        Number of natural neighbors (between 0 and n_neighbors-1)
+        to force the graph to retain. Tunes the strength of supervision
+    metric: str
+        One of sklearn's distance metrics
+    method : str (default='force')
+        if 'force', for each point at stage[i] get n_neighbors, forcing:
+            - n_neighbors/3 to be from stage[i-1]
+            - n_neighbors/3 to be from stage[i]
+            - n_neighbors/3 to be from stage[i+1]
+            For stage[0] and stage[-1], 2*n_neighbors/3 are taken from stage[i]
+
+        if 'guide', for each point at stage[i] get n_neighbors
+            from points in {stage[i-1], stage[i], stage[i+1]},
+            without constraints on proportions
+    return_sparse: bool
+        Whether to return the graph in sparse form
+        or as longform indices and distances
+    stages: list
+        Ordered list of ordinal label stages (low to high).
+        If None, taken as np.unique(ordinal_label)
+
+    Returns
+    -------
+    adata.obs['ps']: smoothed ordinal labels
+
+    """
     if sum(list(map(lambda x: x is not None, [layer, obsm]))) == 2:
         raise ValueError("Only one of `layer` and `obsm` can be used")
     elif obsm is not None:
@@ -533,43 +611,60 @@ def refit_graph(
     adata,
     use_weights=False,
     shift_nodes_pos={},
-    Mu=None,
-    Lambda=None,
-    cycle_Mu=None,
-    cycle_Lambda=None,
-    key="epg",
+    epg_mu=None,
+    epg_lambda=None,
+    cycle_epg_mu=None,
+    cycle_epg_lambda=None,
 ):
+    """Refit graph to data
+
+    Parameters
+    ----------
+    use_weights: bool
+        Whether to weight points with adata.obs['pointweights']
+    shift_nodes_pos: dict
+        Optional dict to hold some nodes fixed at specified positions
+        e.g., {2:[.5,.2]} will hold node 2 at coordinates [.5,.2]
+    epg_mu: float
+        ElPiGraph Mu parameter
+    epg_lambda: float
+        ElPiGraph Lambda parameter
+    cycle_epg_mu: float
+        ElPiGraph Mu parameter, specific for nodes that are part of cycles
+    cycle_epg_lambda: float
+        ElPiGraph Lambda parameter, specific for nodes that are part of cycles
+    """
     # --- Init parameters, variables
-    if Mu is None:
-        Mu = adata.uns[key]["params"]["epg_mu"]
-    if Lambda is None:
-        Lambda = adata.uns[key]["params"]["epg_lambda"]
-    if cycle_Mu is None:
-        cycle_Mu = Mu
-    if cycle_Lambda is None:
-        cycle_Lambda = Lambda
+    if epg_mu is None:
+        epg_mu = adata.uns["epg"]["params"]["epg_mu"]
+    if epg_lambda is None:
+        epg_lambda = adata.uns["epg"]["params"]["epg_lambda"]
+    if cycle_epg_mu is None:
+        cycle_epg_mu = epg_mu
+    if cycle_epg_lambda is None:
+        cycle_epg_lambda = epg_lambda
     if use_weights:
         weights = np.array(adata.obs["pointweights"])[:, None]
     else:
         weights = None
 
-    X = _get_graph_data(adata, key)
-    PG = stream2elpi(adata, key)
+    X = _get_graph_data(adata, "epg")
+    PG = stream2elpi(adata, "epg")
     elpigraph._graph_editing.refitGraph(
         X,
         PG=PG,
         shift_nodes_pos=shift_nodes_pos,
         PointWeights=weights,
-        Mu=Mu,
-        Lambda=Lambda,
-        cycle_Mu=cycle_Mu,
-        cycle_Lambda=cycle_Lambda,
+        Mu=epg_mu,
+        Lambda=epg_lambda,
+        cycle_Mu=cycle_epg_mu,
+        cycle_Lambda=cycle_epg_lambda,
     )
 
-    adata.uns[key]["node_pos"] = PG["NodePositions"]
+    adata.uns["epg"]["node_pos"] = PG["NodePositions"]
 
     # update edge_len, conn, data projection
-    _store_graph_attributes(adata, X, key)
+    _store_graph_attributes(adata, X, "epg")
 
 
 def extend_leaves(
@@ -597,7 +692,25 @@ def extend_leaves(
 
     adata.uns[key]["node_pos"] = PG["NodePositions"]
     adata.uns[key]["edge"] = PG["Edges"][0]
-    _store_graph_attributes(adata, adata.obsm["X_dr"], key)
+    _store_graph_attributes(adata, X, key)
+
+
+def use_graph_with_n_nodes(adata, n_nodes):
+    """Use the graph at n_nodes.
+    This requires having run st2.tl.learn_graph with store_evolution=True
+    """
+
+    adata.uns["epg"]["node_pos"] = adata.uns["epg"]["graph_evolution"][
+        "all_node_pos"
+    ][n_nodes]
+    adata.uns["epg"]["edge"] = elpigraph.src.core.DecodeElasticMatrix2(
+        adata.uns["epg"]["graph_evolution"]["all_edge"][n_nodes]
+    )[0]
+    adata.uns["epg"]["conn"] = scipy.sparse.csr_matrix(
+        adata.uns["epg"]["graph_evolution"]["all_edge"][n_nodes]
+    )
+    X = _get_graph_data(adata, "epg")
+    _store_graph_attributes(adata, X, "epg")
 
 
 def early_groups(
@@ -613,7 +726,45 @@ def early_groups(
     ot_reg_m=0.001,
     key="epg",
 ):
+    """
+    Split data between source and target (with target a branching node)
+    into n_windows slices along pseudotime.
+    Then try to guess which branch the data prior
+    to the branching most resembles.
+    branch_nodes are adjacent to target and represent the separate branches.
+    Labels are propagated back in pseudotime for each of the n_windows slices
+    (e.g., from branch_nodes to slice[n_windows-1],
+    then from slice[n_windows-1] to slice[n_windows-2],etc)
 
+    Parameters
+    ----------
+    branch_nodes: list[int]
+        List of node labels adjacent to target branch node
+    source: int
+        Root node label
+    target: int
+        Branching node label
+    nodes_to_include: list[int]
+        Nodes to include in the path between source and target
+    flavor: str
+        How to propagate labels from branch_nodes
+        to the previous pseudotime slice
+            "ot" for optimal transport
+            "ot_unbalanced" for unbalanced OT
+            "ot_equal" for OT with weight of each branch_nodes equalized
+            "knn" for simple nearest-neighbor search
+    n_windows: int
+        How many slices along pseudotime to make
+        with data between source and target
+    n_neighbors: int
+        Number of nearest neighbors for flavor=
+    ot_reg_e: float
+        Unbalanced optimal transport entropic regularization parameter
+    ot_reg_m: float
+        Unbalanced optimal transport unbalanced parameter
+    key: str
+        Graph key
+    """
     X = _get_graph_data(adata, key)
     PG = stream2elpi(adata, key)
     elpigraph.utils.early_groups(
@@ -637,6 +788,7 @@ def early_groups(
     adata.obs[f"early_groups_{source}->{s}_clusters"] = PG[
         f"early_groups_{source}->{s}_clusters"
     ]
+
 
 def interpolate(
     adata,
