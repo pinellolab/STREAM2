@@ -6,13 +6,6 @@ STREAM2: Fast, scalable, and interactive trajectory analysis of single-cell omic
 
 ![simba](./docs/source/_static/img/logo.png?raw=true)
 
-Latest News
------------
-
-> May 5, 2022  
-
-Alpha Version 0.1 is now available.
-
 Introduction
 ------------
 
@@ -27,50 +20,12 @@ We also provide an accompanying interactive website to allow non-expert users to
 
 ![simba](./docs/source/_static/img/Fig1_V2.1.jpg?raw=true)
 
-<<<<<<< Updated upstream
-Installation with Github with latest branch (Recommended)
-----------------------------------------
-```sh
-$ pip install git+https://github.com/pinellolab/STREAM2.git@latest
-```
-
-If you are new to conda environment:
-
-1)	If Anaconda (or miniconda) is already installed with **Python 3**, skip to 2) otherwise please download and install Python3 Anaconda from here: https://www.anaconda.com/download/
-
-2)	Open a terminal and add the Bioconda channel with the following commands:
-
-```sh
-$ conda config --add channels defaults
-$ conda config --add channels bioconda
-$ conda config --add channels conda-forge
-```
-
-3)	Create an environment named `env_stream2` , install **stream2**, **jupyter**, and activate it with the following commands:
-
-```sh
-$ conda create -n env_stream2 python=3.8 jupyter
-$ conda activate env_stream2
-$ pip install git+https://github.com/pinellolab/STREAM2.git@latest
-```
-
-4)  To perform STREAM2 analyis in Jupyter Notebook as shown in **Tutorial**, type `jupyter notebook` within `env_stream2`:
-
-```sh
-$ jupyter notebook
-```
-
-You should see the notebook open in your browser.
-
-Tutorial
---------
-
-Tutorials for the usage of STREAM2 can be found at **STREAM2_tutorial** repositories [https://github.com/pinellolab/STREAM2_tutorials] It includes tutorials for scRNA-seq data, scATAC-seq data, protenomics data, DNA methelyation data, and multiomics data.
-=======
 Installation
-----------------------------------------
+------------
 ```sh
 $ pip install git+https://github.com/pinellolab/STREAM2
 ```
 
->>>>>>> Stashed changes
+Tutorials
+--------
+Preliminary tutorials for the usage of STREAM2 can be found at **STREAM2_tutorials** repository [https://github.com/pinellolab/STREAM2_tutorials]. 
