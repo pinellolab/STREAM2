@@ -78,13 +78,17 @@ def learn_graph(
     edge: `array` (`.uns['epg']['edge']`)
         Node edges.
     """
-
     if use_partition:
         print("Learning elastic principal graph for each partition...")
         if type(use_partition) is bool:
             partitions = adata.obs["partition"].unique()
+        elif type(use_partition) is list:
+            partitions = use_partition
         else:
-            raise ValueError("use_partition should be a bool")
+            raise ValueError(
+                "use_partition should be a bool or a list of partitions"
+            )
+
         if ordinal_label is not None:
             raise ValueError(
                 "use_partition can't be used together with ordinal_label"
@@ -650,7 +654,9 @@ def _seed_graph(
         else:
             weights = None
         kmeans = KMeans(
-            n_clusters=n_clusters, init="k-means++", random_state=42
+            n_clusters=n_clusters, init="k-means++", 
+            n_init=10, max_iter=300, tol=0.0001, 
+            algorithm='lloyd',random_state=42
         ).fit(mat, sample_weight=weights)
         cluster_labels = kmeans.labels_
         init_nodes_pos = kmeans.cluster_centers_
@@ -732,7 +738,7 @@ def _store_graph_attributes(adata, mat, key):
 
     G = nx.Graph()
     G.add_edges_from(adata.uns[key]["edge"].tolist(), weight=1)
-    mat_conn = nx.to_scipy_sparse_matrix(
+    mat_conn = nx.to_scipy_sparse_array(
         G,
         nodelist=np.arange(len(adata.uns[key]["node_pos"])),
         weight="weight",

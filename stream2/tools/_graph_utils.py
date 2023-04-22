@@ -135,9 +135,12 @@ def find_paths(
                     radius=radius,
                     allow_same_branch=allow_same_branch,
                     fit_loops=fit_loops,
-                    Lambda=p_adata.uns[key]["params"]["epg_lambda"],
-                    Mu=p_adata.uns[key]["params"]["epg_mu"],
+                    epg_lambda=epg_lambda,
+                    epg_mu=epg_mu,
+                    epg_cycle_lambda=epg_cycle_lambda,
+                    epg_cycle_mu=epg_cycle_mu,
                     use_weights=use_weights,
+                    ignore_equivalent=ignore_equivalent,
                     plot=plot,
                     verbose=verbose,
                     inplace=inplace,
@@ -422,7 +425,7 @@ def find_disconnected_components(
     sc.tl.paga(adata, groups=groups, neighbors_key=neighbors_key)
     # edges = np.argwhere(adata.uns["paga"]["connectivities"])
     # edges_tree = np.argwhere(adata.uns["paga"]["connectivities_tree"])
-    g = nx.convert_matrix.from_scipy_sparse_matrix(
+    g = nx.convert_matrix.from_scipy_sparse_array(
         adata.uns["paga"]["connectivities_tree"]
     )
     comps = [list(c) for c in nx.algorithms.components.connected_components(g)]
