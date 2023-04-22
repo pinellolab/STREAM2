@@ -15,10 +15,11 @@ from ._elpigraph import (
 )
 from .._utils import stream2elpi
 
-def project_graph(adata,to_basis='X_umap',key='epg'):
-    
-    obsm = adata.uns[key]['params']['obsm']
-    layer = adata.uns[key]['params']['layer']
+
+def project_graph(adata, to_basis="X_umap", key="epg"):
+
+    obsm = adata.uns[key]["params"]["obsm"]
+    layer = adata.uns[key]["params"]["layer"]
     if obsm is not None:
         X = adata.obsm[obsm].copy()
         from_basis = obsm
@@ -28,23 +29,36 @@ def project_graph(adata,to_basis='X_umap',key='epg'):
     else:
         X = adata.X
         from_basis = X
-        
-    suffix = f'_from_{from_basis}_to_{to_basis}'
-    adata.uns[key+suffix] = copy.deepcopy(adata.uns[key])
-    adata.uns[key+suffix]['params']['obsm']='X_umap'
-        
-    #proj
-    adata.uns[key+suffix]['node_pos_orig']=adata.uns[key+suffix]['node_pos'].copy()
-    adata.uns[key+suffix]['node_pos']=elpigraph.utils.proj2embedding(
-        adata.obsm[from_basis],adata.obsm[to_basis],adata.uns[key]['node_pos'])
-    empty_nodes = np.where(np.isnan(adata.uns[key+suffix]['node_pos'][:,0]))[0]
+
+    suffix = f"_from_{from_basis}_to_{to_basis}"
+    adata.uns[key + suffix] = copy.deepcopy(adata.uns[key])
+    adata.uns[key + suffix]["params"]["obsm"] = "X_umap"
+
+    # proj
+    adata.uns[key + suffix]["node_pos_orig"] = adata.uns[key + suffix][
+        "node_pos"
+    ].copy()
+    adata.uns[key + suffix]["node_pos"] = elpigraph.utils.proj2embedding(
+        adata.obsm[from_basis],
+        adata.obsm[to_basis],
+        adata.uns[key]["node_pos"],
+    )
+    empty_nodes = np.where(
+        np.isnan(adata.uns[key + suffix]["node_pos"][:, 0])
+    )[0]
     for node in empty_nodes:
-        neigh_nodes = adata.uns[key+f'from_{from_basis}_to_{to_basis}']['node_pos'][
+        neigh_nodes = adata.uns[key + f"from_{from_basis}_to_{to_basis}"][
+            "node_pos"
+        ][
             np.unique(
-            adata.uns[key+suffix]['edge'][
-            (adata.uns[key+suffix]['edge']==node).any(axis=1)]
-            )]
-        adata.uns[key+suffix][f'node_pos'][node] = np.nanmean(neigh_nodes,axis=0)
+                adata.uns[key + suffix]["edge"][
+                    (adata.uns[key + suffix]["edge"] == node).any(axis=1)
+                ]
+            )
+        ]
+        adata.uns[key + suffix][f"node_pos"][node] = np.nanmean(
+            neigh_nodes, axis=0
+        )
 
 
 def find_paths(
