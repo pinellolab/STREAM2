@@ -25,4 +25,5 @@ from ._graph_utils import (
     early_groups,
     interpolate,
     use_graph_with_n_nodes,
+    project_graph
 )

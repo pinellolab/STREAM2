@@ -86,7 +86,19 @@ if(feature == 'motif'){
   suppressMessages(library('JASPAR2020')) 
   suppressMessages(library('motifmatchr'))
   print('motif matching...')
-  motifs = getJasparMotifs(species = species)    
+  
+  getJasparMotifs <- function(species = "Homo sapiens", 
+                                collection = "CORE", ...) {
+    opts <- list()
+    opts["species"] <- species
+    opts["collection"] <- collection
+    opts <- c(opts, list(...))
+    out <- TFBSTools::getMatrixSet(JASPAR2016::JASPAR2016, opts)
+    if (!isTRUE(all.equal(TFBSTools::name(out), names(out)))) 
+      names(out) <- paste(names(out), TFBSTools::name(out), sep = "_")
+    return(out)
+  }   
+  motifs = getJasparMotifs(species = species) 
   motif_ix <- matchMotifs(motifs, SE, genome = genome)
   print('Computing motif deviations...')
   dev <- computeDeviations(object = SE, annotations = motif_ix, background_peaks = bg)

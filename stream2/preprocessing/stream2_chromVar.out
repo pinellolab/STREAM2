@@ -1,0 +1,78 @@
+
+R version 4.1.3 (2022-03-10) -- "One Push-Up"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-conda-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> suppressMessages(library(chromVAR))
+> suppressMessages(library(Matrix))
+> suppressMessages(library(SummarizedExperiment))
+> suppressMessages(library(BiocParallel))
+> suppressMessages(library(data.table))
+> 
+> set.seed(2022)
+> 
+> ### Get command line arguments
+> args <- commandArgs(TRUE)
+> print(args[[1]])
+[1] "input='.'"
+> print(args[[2]])
+[1] "species='MusMusculus'"
+> print(args[[3]])
+[1] "genome='mm10'"
+> print(args[[4]])
+[1] "feature='motif'"
+> print(args[[5]])
+[1] "n_jobs=4"
+> 
+> if(length(args)<5){
++     print("Not sufficient arguments supplied.")
++ }else{
++     for(i in 1:length(args)){
++       eval(parse(text=args[[i]]))
++     }
++ }
+> 
+> print(paste0('input is ', input))
+[1] "input is ."
+> print(paste0('species is ', species))
+[1] "species is MusMusculus"
+> print(paste0('genome is ', genome))
+[1] "genome is mm10"
+> print(paste0('feature is ', feature))
+[1] "feature is motif"
+> print(paste0('n_jobs is ', n_jobs))
+[1] "n_jobs is 4"
+> 
+> if(species=='HomoSapiens'){
++     species = 'Homo sapiens'
++ }else if(species=='MusMusculus'){
++     species = 'Mus musculus'
++ }else{
++     print("Only 'HomoSapiens' and 'MusMusculus' are supported")
++     break
++ }
+>     
+> print(paste0('Using',n_jobs,'cores...',sep = " "))
+[1] "Using4cores... "
+> register(MulticoreParam(n_jobs))
+> 
+> ### Read in data files
+> print(paste0('Read in regions: ', input, '/region_file.bed...'))
+[1] "Read in regions: ./region_file.bed..."
+> peaks <- makeGRangesFromDataFrame(data.frame(fread(paste0(input,'/region_file.bed'),col.names=c('seqnames','start','end'))))
+Error in fread(paste0(input, "/region_file.bed"), col.names = c("seqnames",  : 
+  File './region_file.bed' does not exist or is non-readable. getwd()=='/mnt/c/Users/jobac/Desktop/all/git/STREAM2/stream2/preprocessing'
+Calls: makeGRangesFromDataFrame -> data.frame -> fread
+Execution halted
