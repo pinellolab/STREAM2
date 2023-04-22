@@ -1,10 +1,10 @@
 [![CI](https://github.com/pinellolab/stream2/actions/workflows/CI.yml/badge.svg)](https://github.com/pinellolab/stream2/actions/workflows/CI.yml)
 
-# STREAM2
-
-STREAM2: Fast, scalable, and interactive trajectory analysis of single-cell omics data
-
 ![simba](./docs/source/_static/img/logo.png?raw=true)
+
+# STREAM2
+STREAM2 (**S**ingle-cell **T**rajectories **R**econstruction, **E**xploration **A**nd **M**apping) is an interactive pipeline capable of disentangling and visualizing complex trajectories from for single-cell omics data.
+
 
 Installation
 ------------
@@ -19,9 +19,6 @@ Preliminary tutorials for the usage of STREAM2 can be found at **STREAM2_tutoria
 
 Description
 -----------
-
-STREAM2 (**S**ingle-cell **T**rajectories **R**econstruction, **E**xploration **A**nd **M**apping) is an interactive pipeline capable of disentangling and visualizing complex trajectories from for single-cell omics data.
-
 The four key innovations of STREAM2 are: 
 1) STREAM2 can learn more biologically meaningful trajectories in a semi-supervised way by leveraging external information (e.g. time points, FACS labels, predefined relations of clusters, etc.); 
 2) STREAM2 is able to learn not only linear or tree-like structures but also more complex graphs with loops or disconnected components; 
