@@ -44,7 +44,7 @@ def project_graph(adata, to_basis="X_umap", key="epg"):
         np.isnan(adata.uns[key + suffix]["node_pos"][:, 0])
     )[0]
     for node in empty_nodes:
-        neigh_nodes = adata.uns[key + f"from_{from_basis}_to_{to_basis}"][
+        neigh_nodes = adata.uns[key + suffix][
             "node_pos"
         ][
             np.unique(
