@@ -28,4 +28,4 @@ $ pip install git+https://github.com/pinellolab/STREAM2
 
 Tutorials
 --------
-Preliminary tutorials for the usage of STREAM2 can be found at **STREAM2_tutorials** repository [https://github.com/pinellolab/STREAM2_tutorials]. 
+Preliminary tutorials for the usage of STREAM2 can be found at **STREAM2_tutorials** repository https://github.com/pinellolab/STREAM2_tutorials. 
