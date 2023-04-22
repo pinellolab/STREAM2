@@ -8,6 +8,7 @@ import subprocess
 from scipy.sparse import coo_matrix
 from sklearn import preprocessing
 
+
 def anndata2file(adata, outdir):
     isExist = os.path.exists(outdir)
     if not isExist:
@@ -85,7 +86,10 @@ def atac_chromVar(
     # run R script
     subprocess.run(
         args=[
-            "bash","-i",os.path.join(os.path.dirname(__file__), "check_env.sh"),
+            "bash",
+            "-i",
+            os.path.join(os.path.dirname(__file__), 
+                         "check_env.sh"),
             env,
             outdir,
             species,
