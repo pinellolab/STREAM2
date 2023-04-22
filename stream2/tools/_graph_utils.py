@@ -28,18 +28,15 @@ def project_graph(adata, to_basis="X_umap", key="epg"):
         from_basis = layer
     else:
         X = adata.X
-        from_basis = X
+        from_basis = 'X'
 
     suffix = f"_from_{from_basis}_to_{to_basis}"
     adata.uns[key + suffix] = copy.deepcopy(adata.uns[key])
     adata.uns[key + suffix]["params"]["obsm"] = "X_umap"
 
     # proj
-    adata.uns[key + suffix]["node_pos_orig"] = adata.uns[key + suffix][
-        "node_pos"
-    ].copy()
     adata.uns[key + suffix]["node_pos"] = elpigraph.utils.proj2embedding(
-        adata.obsm[from_basis],
+        X,
         adata.obsm[to_basis],
         adata.uns[key]["node_pos"],
     )
@@ -56,7 +53,7 @@ def project_graph(adata, to_basis="X_umap", key="epg"):
                 ]
             )
         ]
-        adata.uns[key + suffix][f"node_pos"][node] = np.nanmean(
+        adata.uns[key + suffix]["node_pos"][node] = np.nanmean(
             neigh_nodes, axis=0
         )
 
