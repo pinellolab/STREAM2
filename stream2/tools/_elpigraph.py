@@ -674,7 +674,8 @@ def _seed_graph(
 
     # ---if supervised adjacency matrix option
     if (
-        ((len(paths_favored) > 0) or (len(paths_disfavored) > 0)) and label is None
+        ((len(paths_favored) > 0) or (len(paths_disfavored) > 0)) 
+        and label is None
     ) or (
         ((len(paths_favored) == 0) and (len(paths_disfavored) == 0))
         and label is not None
@@ -865,7 +866,8 @@ def _get_partition_modes(mat, init_nodes_pos, labels):
     return modes
 
 
-def _get_labels_adjmat(labels_u, labels_ignored, paths_favored, paths_disfavored, label_strength):
+def _get_labels_adjmat(labels_u, labels_ignored, paths_favored, 
+                       paths_disfavored, label_strength):
     """Create adjmat given labels and paths.
 
     labels_ignored are connected to all other labels
@@ -910,7 +912,8 @@ def _get_clus_adjmat(adjmat_strength, num_modes, n_clusters):
 
 
 def _categorical_adjmat(
-    mat, init_nodes_pos, paths_favored, paths_disfavored, labels, label_strength
+    mat, init_nodes_pos, paths_favored, 
+    paths_disfavored, labels, label_strength
 ):
     """Main function, create categorical adjmat given
     node positions, cluster paths, point labels."""
@@ -919,7 +922,8 @@ def _categorical_adjmat(
     labels_ignored = np.setdiff1d(labels, labels_u)
     # label adjacency matrix
     adjmat_strength, num_labels = _get_labels_adjmat(
-        labels_u, labels_ignored, paths_favored, paths_disfavored, label_strength
+        labels_u, labels_ignored, paths_favored, 
+        paths_disfavored, label_strength
     )
     # assign label to nodes
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
