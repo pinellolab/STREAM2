@@ -393,10 +393,10 @@ def seed_graph(
     max_n_clusters=200,
     n_neighbors=50,
     nb_pct=None,
-    paths=[],
-    paths_forbidden=[],
+    paths_favored=[],
+    paths_disfavored=[],
     label=None,
-    label_strength=0.5,
+    label_strength=2,
     force=False,
     use_weights=False,
     use_partition=False,
@@ -439,15 +439,15 @@ def seed_graph(
     nb_pct: `float`, optional (default: None)
         The percentage of neighbor cells
         (when specified, it will overwrite n_neighbors).
-    paths: list of lists, optional (default: [])
-        Paths between categorical labels used
+    paths_favored: list of lists, optional (default: [])
+        Favored paths between categorical labels used
         for supervised MST initialization
-    paths_forbidden: list of lists, optional (default: [])
-        Forbidden paths between categorical labels
+    paths_disfavored: list of lists, optional (default: [])
+        Disfavored paths between categorical labels
         used for supervised MST initialization
     label: `str`, optional (default: None)
         Categorical labels for supervised MST initialization
-    label_strength: float in (0,1)
+    label_strength: float in [1,oo)
         Strength of supervised MST initialization
     force: bool
         (experimental feature)
@@ -503,8 +503,8 @@ def seed_graph(
                     max_n_clusters=max_n_clusters,
                     n_neighbors=n_neighbors,
                     nb_pct=nb_pct,
-                    paths=paths,
-                    paths_forbidden=paths_forbidden,
+                    paths_favored=paths_favored,
+                    paths_disfavored=paths_disfavored,
                     label=label,
                     label_strength=label_strength,
                     force=force,
@@ -544,8 +544,8 @@ def seed_graph(
             max_n_clusters=max_n_clusters,
             n_neighbors=n_neighbors,
             nb_pct=nb_pct,
-            paths=paths,
-            paths_forbidden=paths_forbidden,
+            paths_favored=paths_favored,
+            paths_disfavored=paths_disfavored,
             label=label,
             label_strength=label_strength,
             force=force,
@@ -564,10 +564,10 @@ def _seed_graph(
     max_n_clusters=200,
     n_neighbors=50,
     nb_pct=None,
-    paths=[],
-    paths_forbidden=[],
+    paths_favored=[],
+    paths_disfavored=[],
     label=None,
-    label_strength=0.5,
+    label_strength=2,
     force=False,
     use_weights=False,
     verbose=True,
@@ -596,6 +596,9 @@ def _seed_graph(
 
     if nb_pct is not None:
         n_neighbors = int(np.around(mat.shape[0] * nb_pct))
+
+    if label_strength<1:
+        raise ValueError("label_strength should be >=1")
 
     if verbose:
         print("Clustering...")
@@ -671,9 +674,9 @@ def _seed_graph(
 
     # ---if supervised adjacency matrix option
     if (
-        ((len(paths) > 0) or (len(paths_forbidden) > 0)) and label is None
+        ((len(paths_favored) > 0) or (len(paths_disfavored) > 0)) and label is None
     ) or (
-        ((len(paths) == 0) and (len(paths_forbidden) == 0))
+        ((len(paths_favored) == 0) and (len(paths_disfavored) == 0))
         and label is not None
     ):
         raise ValueError(
@@ -681,21 +684,20 @@ def _seed_graph(
             " list) need to be provided for path-supervised initialization"
         )
     elif (
-        (len(paths) > 0) or (len(paths_forbidden) > 0)
+        (len(paths_favored) > 0) or (len(paths_disfavored) > 0)
     ) and label is not None:
         (
             init_nodes_pos,
             clus_adjmat,
-            adjmat,
             adjmat_strength,
             num_modes,
             num_labels,
             labels_ignored,
-        ) = _categorical_adjmat2(
+        ) = _categorical_adjmat(
             mat,
             init_nodes_pos,
-            paths,
-            paths_forbidden,
+            paths_favored,
+            paths_disfavored,
             adata.obs[label],
             label_strength,
         )
@@ -712,7 +714,7 @@ def _seed_graph(
     init_edges = np.array(mst.edges())
     if force and label is not None:
         init_edges = _force_missing_connections(
-            D, num_labels, num_modes, init_edges, paths, clus_adjmat
+            D, num_labels, num_modes, init_edges, paths_favored, clus_adjmat
         )
 
     # Store results ###
@@ -815,7 +817,7 @@ def _get_branch_id(adata, key="epg"):
 
 
 def _force_missing_connections(
-    D, num_labels, num_modes, init_edges, paths, clus_adjmat
+    D, num_labels, num_modes, init_edges, paths_favored, clus_adjmat
 ):
     found_missing = True
     while found_missing:
@@ -824,7 +826,7 @@ def _force_missing_connections(
         edges_labels = np.array(list(num_labels.keys()))[num_modes][
             init_edges
         ].tolist()
-        for path in paths:
+        for path in paths_favored:
             for i in range(len(path) - 1):
                 if [path[i], path[i + 1]] not in edges_labels and [
                     path[i + 1],
@@ -863,7 +865,7 @@ def _get_partition_modes(mat, init_nodes_pos, labels):
     return modes
 
 
-def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
+def _get_labels_adjmat(labels_u, labels_ignored, paths_favored, paths_disfavored, label_strength):
     """Create adjmat given labels and paths.
 
     labels_ignored are connected to all other labels
@@ -871,62 +873,53 @@ def _get_labels_adjmat(labels_u, labels_ignored, paths, paths_forbidden):
     num_labels = {
         s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
     }
-    adjmat = np.zeros(
-        (
-            len(labels_u) + len(labels_ignored),
-            len(labels_u) + len(labels_ignored),
-        ),
-        dtype=int,
-    )
-
-    # allow within-cluster connections
-    np.fill_diagonal(adjmat, 1)
+    len_labels = len(labels_u) + len(labels_ignored)
+    adjmat = np.ones((len_labels, len_labels))
 
     # allow connections given from paths
-    for p in paths:
+    for p in paths_favored:
         for i in range(len(p) - 1):
             adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
                 num_labels[p[i + 1]], num_labels[p[i]]
-            ] = 1
+            ] = 1/label_strength
 
-    # allow unspecified clusters to connect to all other clusters
-    for x in labels_ignored:
-        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 1
-
-    # remove forbidden connections given from paths_forbidden
-    for p in paths_forbidden:
+    # remove forbidden connections given from paths_disfavored
+    for p in paths_disfavored:
         for i in range(len(p) - 1):
             adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
                 num_labels[p[i + 1]], num_labels[p[i]]
-            ] = 0
+            ] = label_strength
 
     return adjmat, num_labels
 
+def _get_clus_adjmat(adjmat_strength, num_modes, n_clusters):
+    """Create clus_adjmat given labels adjmat
+    and kmeans label assignment."""
 
-def _get_clus_adjmat(adjmat, num_modes, n_clusters):
-    """Create clus_adjmat given labels adjmat and kmeans label assignment."""
+    adjmat_clus = np.ones((n_clusters, n_clusters))
 
-    adjmat_clus = np.full((n_clusters, n_clusters), np.nan)
-    eis, ejs = adjmat.nonzero()
-
-    for ei, ej in zip(eis, ejs):
-        clus_ei = np.where(num_modes == ei)[0]
-        clus_ej = np.where(num_modes == ej)[0]
-        adjmat_clus[
-            clus_ei[:, None], np.repeat(clus_ej[None], len(clus_ei), axis=0)
-        ] = 1
+    for ei in range(len(adjmat_strength)):
+        for ej in range(len(adjmat_strength)):
+            clus_ei = np.where(num_modes == ei)[0]
+            clus_ej = np.where(num_modes == ej)[0]
+            adjmat_clus[
+                clus_ei[:, None],
+                np.repeat(clus_ej[None], len(clus_ei), axis=0),
+            ] = adjmat_strength[ei, ej]
     return adjmat_clus
 
 
-def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
-    """Create categorical adjmat given node positions, cluster
-    paths, point labels."""
+def _categorical_adjmat(
+    mat, init_nodes_pos, paths_favored, paths_disfavored, labels, label_strength
+):
+    """Main function, create categorical adjmat given
+    node positions, cluster paths, point labels."""
 
-    labels_u = np.unique([c for p in paths for c in p])
+    labels_u = np.unique([c for p in paths_favored for c in p])
     labels_ignored = np.setdiff1d(labels, labels_u)
     # label adjacency matrix
-    adjmat, num_labels = _get_labels_adjmat(
-        labels_u, labels_ignored, paths, paths_forbidden
+    adjmat_strength, num_labels = _get_labels_adjmat(
+        labels_u, labels_ignored, paths_favored, paths_disfavored, label_strength
     )
     # assign label to nodes
     modes = _get_partition_modes(mat, init_nodes_pos, labels)
@@ -949,124 +942,22 @@ def _categorical_adjmat(mat, init_nodes_pos, paths, paths_forbidden, labels):
 
     # nodes adjacency matrix
     clus_adjmat = _get_clus_adjmat(
-        adjmat, num_modes, n_clusters=len(init_nodes_pos)
-    )
-    return init_nodes_pos, clus_adjmat, adjmat, num_modes, num_labels
-
-
-def _get_labels_adjmat2(labels_u, labels_ignored, paths, paths_forbidden):
-    """Create adjmat given labels and paths.
-
-    labels_ignored are connected to all other labels
-    """
-    num_labels = {
-        s: i for i, s in enumerate(np.append(labels_u, labels_ignored))
-    }
-    len_labels = len(labels_u) + len(labels_ignored)
-    adjmat = np.zeros((len_labels, len_labels))
-
-    # allow within-cluster connections
-    np.fill_diagonal(adjmat, 1)
-
-    # allow connections given from paths
-    for p in paths:
-        for i in range(len(p) - 1):
-            adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
-                num_labels[p[i + 1]], num_labels[p[i]]
-            ] = 1
-
-    # disallow unspecified clusters to connect to all other clusters
-    for x in labels_ignored:
-        adjmat[num_labels[x]] = adjmat[:, num_labels[x]] = 0
-        adjmat[num_labels[x], num_labels[x]] = 1
-
-    # remove forbidden connections given from paths_forbidden
-    for p in paths_forbidden:
-        for i in range(len(p) - 1):
-            adjmat[num_labels[p[i]], num_labels[p[i + 1]]] = adjmat[
-                num_labels[p[i + 1]], num_labels[p[i]]
-            ] = np.nan
-
-    return adjmat, num_labels
-
-
-def _get_clus_adjmat2(adjmat_strength, num_modes, n_clusters, factor):
-    """Create clus_adjmat given labels adjmat
-    and kmeans label assignment."""
-
-    adjmat_clus = np.ones((n_clusters, n_clusters))
-
-    for ei in range(len(adjmat_strength)):
-        for ej in range(len(adjmat_strength)):
-            clus_ei = np.where(num_modes == ei)[0]
-            clus_ej = np.where(num_modes == ej)[0]
-            adjmat_clus[
-                clus_ei[:, None],
-                np.repeat(clus_ej[None], len(clus_ei), axis=0),
-            ] = (1 - factor) + adjmat_strength[ei, ej] * factor
-    return adjmat_clus
-
-
-def _categorical_adjmat2(
-    mat, init_nodes_pos, paths, paths_forbidden, labels, factor
-):
-    """Main function, create categorical adjmat given
-    node positions, cluster paths, point labels."""
-
-    labels_u = np.unique([c for p in paths for c in p])
-    labels_ignored = np.setdiff1d(labels, labels_u)
-    # label adjacency matrix
-    adjmat, num_labels = _get_labels_adjmat2(
-        labels_u, labels_ignored, paths, paths_forbidden
-    )
-
-    ix_nan = np.isnan(adjmat)
-    adjmat[ix_nan] = 0.0
-    graph = nx.from_numpy_array(adjmat)
-    adjmat_strength = np.array(
-        pd.DataFrame(dict(nx.all_pairs_shortest_path_length(graph)))
-    )
-    min_shortestpath = 1.0
-    np.fill_diagonal(adjmat_strength, min_shortestpath)
-    max_shortestpath = np.nanmax(adjmat_strength)
-    adjmat_strength = adjmat_strength / max_shortestpath
-    adjmat_strength[np.isnan(adjmat_strength) & (~ix_nan)] = 1.0
-
-    # assign label to nodes
-    modes = _get_partition_modes(mat, init_nodes_pos, labels)
-    num_modes = np.array([num_labels[m] for m in modes])
-
-    # add centroids if necessary to prevent bug
-    # (if some label has no kmean assigned to it)
-    labels_miss = np.setdiff1d(labels_u, modes)
-    if len(labels_miss) > 0:
-        print(
-            f"Found label(s) {labels_miss} with no representative node. Adding"
-            " label centroid(s) as node(s)"
-        )
-        centroids = np.vstack(
-            [mat[labels == s].mean(axis=0) for s in labels_miss]
-        )
-        init_nodes_pos = np.vstack((init_nodes_pos, centroids))
-        modes = np.hstack((modes, labels_miss))
-        num_modes = np.array([num_labels[m] for m in modes])
-
-    # nodes adjacency matrix
-    clus_adjmat = _get_clus_adjmat2(
         adjmat_strength,
         num_modes,
         n_clusters=len(init_nodes_pos),
-        factor=factor,
     )
     return (
         init_nodes_pos,
         clus_adjmat,
-        adjmat,
         adjmat_strength,
         num_modes,
         num_labels,
         labels_ignored,
     )
+
+
+
+
 
 
 def _get_graph_data(adata, key):
