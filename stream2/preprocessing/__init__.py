@@ -21,4 +21,3 @@ from ._pca import (
     select_pcs_features,
 )
 from ._variable_genes import select_variable_genes
-from ._atac_chromVar import atac_chromVar
