@@ -28,7 +28,7 @@ release = "v0.1.0"
 
 from urllib.request import urlretrieve  # noqa: E402
 
-notebooks_url = "https://github.com/pinellolab/STREAM2_tutorials/raw/main/tutorial_notebooks/"  # noqa: E402
+notebooks_url = "https://github.com/pinellolab/STREAM2_tutorials/raw/main/tutorial_notebooks/"  # noqa
 notebooks_v1_0 = [
     "complex_structure.ipynb",
     "supervision_ordinal.ipynb",
