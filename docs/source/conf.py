@@ -24,6 +24,24 @@ author = "huidong chen"
 # The full version, including alpha/beta/rc tags
 release = "v0.1.0"
 
+# -- Retrieve notebooks -------------------------------
+
+from urllib.request import urlretrieve  # noqa: E402
+
+notebooks_url = "https://github.com/pinellolab/STREAM2_tutorials/raw/main/tutorial_notebooks/"  # noqa
+notebooks_v1_0 = [
+    "complex_structure.ipynb",
+    "supervision_ordinal.ipynb",
+    "supervision_categorical.ipynb",
+    "multiomics.ipynb",
+    "stream_plots.ipynb",
+]
+
+for nb in notebooks_v1_0:
+    try:
+        urlretrieve(notebooks_url + nb, nb)
+    except Exception:
+        pass
 
 # -- General configuration ---------------------------------------------------
 
@@ -31,11 +49,15 @@ release = "v0.1.0"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    'sphinx.ext.napoleon',
+    "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "nbsphinx",
 ]
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -43,7 +65,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['_build']
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -52,6 +74,9 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
+
+github_repo = 'stream2'
+github_nb_repo = 'stream2_tutorials'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -14,14 +14,17 @@ Contents
    :maxdepth: 2
    :caption: Contents:
 
-   Introduction
+   About STREAM2
    Installation
-   Tutorials
+   API
 
 
-Indices and tables
-==================
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   complex_structure
+   supervision_ordinal
+   supervision_categorical
+   multiomics
+   stream_plots
