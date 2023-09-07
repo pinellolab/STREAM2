@@ -7,8 +7,8 @@ Import stream2 as::
 
    import stream2 as st2
 
-Configuration for SIMBA
-~~~~~~~~~~~~~~~~~~~~~~~
+Configuration for STREAM2
+~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: _autosummary
 
@@ -18,7 +18,6 @@ Configuration for SIMBA
 
 Reading
 ~~~~~~~
-
 .. autosummary::
    :toctree: _autosummary
 
@@ -30,9 +29,9 @@ Reading
 
 See more at `anndata <https://anndata.readthedocs.io/en/latest/api.html#reading>`_
 
+
 Preprocessing
 ~~~~~~~~~~~~~
-
 .. autosummary::
    :toctree: _autosummary
 
@@ -43,9 +42,9 @@ Preprocessing
    pp.pca
    pp.select_variable_genes   
 
+
 Tools
 ~~~~~
-
 .. autosummary::
    :toctree: _autosummary
 
@@ -63,7 +62,6 @@ Tools
 
 Plotting
 ~~~~~~~~
-
 .. autosummary::
    :toctree: _autosummary
 
