@@ -21,7 +21,8 @@ def dimension_reduction(
     eigen_solver="auto",
     **kwargs,
 ):
-    """perform UMAP
+    """perform dimension reduction
+
     Parameters
     ----------
     adata: AnnData
