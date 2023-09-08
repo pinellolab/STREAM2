@@ -7,6 +7,7 @@ from ._utils import cal_tf_idf
 
 def log_transform(adata):
     """Return the natural logarithm of one plus the input array, element-wise.
+
     Parameters
     ----------
     adata: AnnData
@@ -25,22 +26,24 @@ def log_transform(adata):
 
 def normalize(adata, method="lib_size", scale_factor=1e4, save_raw=True):
     """Normalize count matrix.
+
     Parameters
     ----------
     adata: AnnData
         Annotated data matrix.
     method: `str`, optional (default: 'lib_size')
-        Choose from {{'lib_size','tf_idf'}}
-        Method used for dimension reduction.
-        'lib_size': Total-count normalize (library-size correct)
+        Choose from {{'lib_size','tf_idf'}}.
+        Method used for dimension reduction.\n
+        'lib_size': Total-count normalize (library-size correct).\n
         'tf_idf': TF-IDF (term frequency–inverse document frequency)
-                  transformation
+                  transformation.
     Returns
     -------
     updates `adata` with the following fields.
     X: `numpy.ndarray` (`adata.X`)
         Store #observations × #var_genes normalized data matrix.
     """
+
     if method not in ["lib_size", "tf_idf"]:
         raise ValueError("unrecognized method '%s'" % method)
     if save_raw:

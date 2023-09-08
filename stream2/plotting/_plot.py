@@ -104,7 +104,7 @@ def violin(
             plt.savefig(
                 os.path.join(fig_path, fig_name),
                 pad_inches=1,
-                bbox_inches="tight",dpi=300,
+                bbox_inches="tight", dpi=300,
             )
             plt.close(fig)
     if len(list_var) > 0:
@@ -144,7 +144,7 @@ def violin(
             plt.savefig(
                 os.path.join(fig_path, fig_name),
                 pad_inches=1,
-                bbox_inches="tight",dpi=300,
+                bbox_inches="tight", dpi=300,
             )
             plt.close(fig)
 
@@ -211,7 +211,7 @@ def hist(
             plt.savefig(
                 os.path.join(fig_path, fig_name),
                 pad_inches=1,
-                bbox_inches="tight",dpi=300,
+                bbox_inches="tight", dpi=300,
             )
             plt.close(fig)
     if len(list_var) > 0:
@@ -240,7 +240,7 @@ def hist(
             plt.savefig(
                 os.path.join(fig_path, fig_name),
                 pad_inches=1,
-                bbox_inches="tight",dpi=300,
+                bbox_inches="tight", dpi=300,
             )
             plt.close(fig)
 
@@ -290,7 +290,7 @@ def pca_variance_ratio(
         plt.savefig(
             os.path.join(fig_path, fig_name),
             pad_inches=1,
-            bbox_inches="tight",dpi=300,
+            bbox_inches="tight", dpi=300,
         )
         plt.close(fig)
 
@@ -366,7 +366,7 @@ def pcs_features(
         plt.savefig(
             os.path.join(fig_path, fig_name),
             pad_inches=1,
-            bbox_inches="tight",dpi=300,
+            bbox_inches="tight", dpi=300,
         )
         plt.close(fig)
 
@@ -435,7 +435,7 @@ def variable_genes(
         fig.savefig(
             os.path.join(fig_path, fig_name),
             pad_inches=1,
-            bbox_inches="tight",dpi=300,
+            bbox_inches="tight", dpi=300,
         )
         plt.close(fig)
 
@@ -659,7 +659,7 @@ def _scatterplot2d(
         plt.savefig(
             os.path.join(fig_path, fig_name),
             pad_inches=1,
-            bbox_inches="tight",dpi=300,
+            bbox_inches="tight", dpi=300,
         )
         plt.close(fig)
     if copy:
@@ -1199,7 +1199,7 @@ def graph(
         fig.savefig(
             os.path.join(fig_path, fig_name),
             pad_inches=1,
-            bbox_inches="tight",dpi=300,
+            bbox_inches="tight", dpi=300,
         )
         plt.close(fig)
 
@@ -1592,7 +1592,7 @@ def stream(
     color: `list` optional (default: None)
         Column names of observations (adata.obs.columns)
         or variable names(adata.var_names)
-         A list of names to be plotted.
+        A list of names to be plotted.
     preference: `list`, optional (default: None):
         The preference of nodes. The branch with speficied nodes are preferred
         and will be put on the upper part of stream plot.
@@ -1832,10 +1832,10 @@ def stream(
             if color is None:
                 plt.savefig(os.path.join(
                     file_path_S, 'plot_stream.' + fig_format),
-                    pad_inches=1, bbox_inches='tight',dpi=300)
+                    pad_inches=1, bbox_inches='tight', dpi=300)
             else:
                 plt.savefig(os.path.join(
                     file_path_S,
                     'plot_stream_' + slugify(ann) + '.' + fig_format),
-                    pad_inches=1, bbox_inches='tight',dpi=300)
+                    pad_inches=1, bbox_inches='tight', dpi=300)
             plt.close(fig)

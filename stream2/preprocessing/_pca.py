@@ -18,6 +18,7 @@ def pca(
     **kwargs,
 ):
     """perform Principal Component Analysis (PCA)
+
     Parameters
     ----------
     adata: AnnData

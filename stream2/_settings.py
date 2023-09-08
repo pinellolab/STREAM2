@@ -28,10 +28,11 @@ class Stream2Config:
         rc=None,
     ):
         """Set global parameters for figures. Modified from sns.set()
+
         Parameters
         ----------
         context : string or dict
-            Plotting context parameters, see seaborn :func:`plotting_context
+            Plotting context parameters, see seaborn :func:`plotting_context`
         style: `string`,optional (default: 'white')
             Axes style parameters, see seaborn :func:`axes_style`
         palette : string or sequence
@@ -51,6 +52,9 @@ class Stream2Config:
             rc settings properties.
             Parameter mappings to override the values in the preset style.
             Please see https://matplotlib.org/tutorials/introductory/customizing.html#a-sample-matplotlibrc-file # noqa
+
+        Returns
+        -------
         """
         # mpl.rcParams.update(mpl.rcParamsDefault)
         sns.set(

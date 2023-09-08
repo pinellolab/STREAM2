@@ -179,6 +179,7 @@ def filter_samples(
     expr_cutoff=1,
 ):
     """Filter out samples based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
@@ -286,6 +287,7 @@ def filter_cells_rna(
     expr_cutoff=1,
 ):
     """Filter out cells for RNA-seq based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
@@ -394,6 +396,7 @@ def filter_cells_atac(
     expr_cutoff=1,
 ):
     """Filter out cells for ATAC-seq based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
@@ -502,6 +505,7 @@ def filter_genes(
     expr_cutoff=1,
 ):
     """Filter out features based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
@@ -616,6 +620,7 @@ def filter_peaks(
     expr_cutoff=1,
 ):
     """Filter out features based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
@@ -730,6 +735,7 @@ def filter_features(
     expr_cutoff=1,
 ):
     """Filter out features based on different metrics.
+
     Parameters
     ----------
     adata: AnnData
