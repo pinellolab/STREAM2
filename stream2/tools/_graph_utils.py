@@ -725,7 +725,7 @@ def extend_leaves(
     Parameters
     -----------
     Mode: str, the mode used to extend the graph. 
-        "QuantDists","QuantCentroid", "WeigthedCentroid" are currently implemented
+        "QuantDists","QuantCentroid", "WeigthedCentroid" 
     LeafIDs: int vector, 
         The id of nodes to extend. If None, all the vertices will be extended.
     TrimmingRadius: positive numeric
@@ -734,7 +734,8 @@ def extend_leaves(
         Should optimization (via simulated annealing) 
         be performed when Mode = "QuantDists"?
     ControlPar: positive numeric
-        The parameter used to control the contribution of the different data points
+        The parameter used to control the contribution of 
+        the different data points
 
         The value of ControlPar has a different interpretation 
         depending on the valus of Mode. 
@@ -744,7 +745,8 @@ def extend_leaves(
 
         If Mode = "QuantCentroid", for each leaf node, 
         the extreme points are ordered by their distance from the node
-        and the centroid of the points farther away than the ControlPar is returned.
+        and the centroid of the points farther away 
+        than ControlPar is returned.
 
         If Mode = "WeightedCentroid", for each leaf node, 
         a weight is computed for each points 
