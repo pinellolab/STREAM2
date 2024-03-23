@@ -366,7 +366,7 @@ def detect_transition_markers(
         + " cells ..."
     )
     input_markers_expressed = np.array(input_markers)[
-        np.where((df_sc[input_markers] != 0).sum(axis=0) > min_num_cells)[0]
+        np.where((df_sc[input_markers]>0).sum(axis=0) > min_num_cells)[0]
     ].tolist()
     df_marker_detection = df_sc[input_markers_expressed].copy()
 
