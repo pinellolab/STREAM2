@@ -457,8 +457,8 @@ def detect_transition_markers(
             # /!\ dont use df_cells_sort
             # and pseudotime_cells_sort, breaks xicorr
             res = xicorr_ps(
-                np.array(df_cells.iloc[:, ix_cutoff]),
                 np.array(pseudotime_cells),
+                np.array(df_cells.iloc[:, ix_cutoff])
             )
             df_stat_pval_qval["stat"] = res[0]
             df_stat_pval_qval["pval"] = res[1]
