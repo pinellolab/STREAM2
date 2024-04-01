@@ -203,25 +203,25 @@ def xicorr(x, y, n):
 
 
 @nb.njit(parallel=True)
-def xicorr_ps(X, y):
+def xicorr_ps(x, Y):
     """Fast xi correlation coefficient
-    X: 2d np.array
-    y: 0d np.array
+    x: 0d np.array
+    Y: 2d np.array
     """
-    n = len(X)
-    corrs = np.zeros(X.shape[1])
-    pvals = np.zeros(X.shape[1])
-    for i in nb.prange(X.shape[1]):
-        corrs[i], pvals[i] = xicorr(X[:, i], y, n)
+    n = len(Y)
+    corrs = np.zeros(Y.shape[1])
+    pvals = np.zeros(Y.shape[1])
+    for i in nb.prange(Y.shape[1]):
+        corrs[i], pvals[i] = xicorr(x,Y[:, i], n)
     return corrs, pvals
 
 
-def spearman_ps(y, X):
+def spearman_ps(x, Y):
     """Fast spearman correlation coefficient
     X: 2d np.array
     y: 0d np.array
     """
-    return pearson_corr(rankdata(y[None]), rankdata(X.T))
+    return pearson_corr(rankdata(x[None]), rankdata(Y.T))
 
 
 def pearson_corr(arr1, arr2):
@@ -366,7 +366,7 @@ def detect_transition_markers(
         + " cells ..."
     )
     input_markers_expressed = np.array(input_markers)[
-        np.where((df_sc[input_markers] != 0).sum(axis=0) > min_num_cells)[0]
+        np.where((df_sc[input_markers]>0).sum(axis=0) > min_num_cells)[0]
     ].tolist()
     df_marker_detection = df_sc[input_markers_expressed].copy()
 
@@ -457,8 +457,8 @@ def detect_transition_markers(
             # /!\ dont use df_cells_sort
             # and pseudotime_cells_sort, breaks xicorr
             res = xicorr_ps(
-                np.array(df_cells.iloc[:, ix_cutoff]),
                 np.array(pseudotime_cells),
+                np.array(df_cells.iloc[:, ix_cutoff])
             )
             df_stat_pval_qval["stat"] = res[0]
             df_stat_pval_qval["pval"] = res[1]
